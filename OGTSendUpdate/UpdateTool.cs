@@ -60,6 +60,7 @@ namespace OGTUpdateTool
                 accel = velocity - lastVelocity;
                 jerk = accel - lastAccel;
                 snap = jerk - lastJerk;
+                index = Math.Abs(accel) + Math.Abs(jerk);
 
                 Console.Write("v");
                 Console.WriteLine(velocity);
@@ -92,7 +93,7 @@ namespace OGTUpdateTool
             }
         }
 
-        public double velocity, accel, jerk, snap, lastVelocity, lastAccel, lastJerk, count;
+        public double velocity, accel, jerk, snap, lastVelocity, lastAccel, lastJerk, count, index;
         public Vector2 raw1Pos, raw2Pos;
 
     }
