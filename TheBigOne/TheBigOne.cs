@@ -476,6 +476,8 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
             /* Timing update
              */
 
+            UpdateARFReports(Position);
+
             _recentDelta = (float)_reportWatch.Restart().TotalMilliseconds;
 
             Vector2 OldPosition = FilterInterpolate(_recentDelta); // Smooth transition calc thing
@@ -620,8 +622,6 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
                     //FilterStateUpdatePrediction();
                 }
 
-                Console.WriteLine(check);
-                check = 0;
 
                 //if (_interpolation == false)
                 //{
@@ -647,7 +647,6 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
                 //{
                     _outputPosition = FilterInterpolate(ReportWatchElapsed);
                     tabletReport.Position = _outputPosition;
-                    check += (Math.Sqrt(Math.Pow(_rawPosition.X - _outputPosition.X, 2) + Math.Pow(_rawPosition.Y - _outputPosition.Y, 2)));
                     tabletReport.Pressure = _pressure;
                     OnEmit();
                 //}
@@ -687,7 +686,31 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
             }
         }
 
-        public double check;
+        public double arf_lastVel, arf_vel, arf_lastAccel, arf_accel, arf_lastJerk, arf_jerk, arf_snap;
+        public Vector2 arf_lastReport, arf_currReport, arf_diff; 
+
+        void UpdateARFReports(Vector2 position) {
+                arf_lastReport = arf_currReport;
+                arf_currReport = position;
+
+                arf_diff = arf_currReport - arf_lastReport;
+
+                arf_lastVel = arf_vel;
+                arf_vel =  ((Math.Sqrt(Math.Pow(arf_diff.X, 2) + Math.Pow(arf_diff.Y, 2)) / 1) / (_tabletHz / 100));
+
+                arf_lastAccel = arf_accel;
+                arf_accel = arf_vel - arf_lastVel;
+
+                arf_lastJerk = arf_jerk;
+                arf_jerk = arf_accel - arf_lastAccel;
+
+                arf_snap = arf_jerk - arf_lastJerk;
+                Console.WriteLine(arf_accel);
+                Console.WriteLine(arf_jerk);
+                Console.WriteLine("-------------------------");
+        }
+
+        
 
     }
 }
