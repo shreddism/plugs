@@ -232,6 +232,8 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
                 //    d = _derivatives; //break 
             }
 
+            
+
             return TempVector;
         }
 
@@ -601,7 +603,7 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
                 if (_ignoreDuplicate) //Ignore duplicates when previous cursor movement was faster than something, mb need to make it cleaner still
                     if (FilterCheckDuplicate(tabletReport.Position))
                     {
-                        tabletReport.Position = _outputPosition;
+                        tabletReport.Position = FakeAdaptiveRadialFollow(_outputPosition);
                         OnEmit();
                         return;
                     }
@@ -646,7 +648,7 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
                 //if (_interpolation == true)
                 //{
                     _outputPosition = FilterInterpolate(ReportWatchElapsed);
-                    tabletReport.Position = _outputPosition;
+                    tabletReport.Position = FakeAdaptiveRadialFollow(_outputPosition);
                     tabletReport.Pressure = _pressure;
                     OnEmit();
                 //}
@@ -670,7 +672,7 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
                         d--;
                     }
                     //_outputPosition = FilterInterpolate((float)_reportWatch.Elapsed.TotalMilliseconds);
-                    tabletReport.Position = _outputPosition;
+                    tabletReport.Position = FakeAdaptiveRadialFollow(_outputPosition);
                     
                     tabletReport.Pressure = _pressure;
                     OnEmit();
@@ -686,31 +688,99 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
             }
         }
 
-        public double arf_lastVel, arf_vel, arf_lastAccel, arf_accel, arf_lastJerk, arf_jerk, arf_snap;
-        public Vector2 arf_lastReport, arf_currReport, arf_diff; 
+        public double arf_lastVel, arf_vel, arf_lastAccel, arf_accel, arf_lastJerk, arf_jerk, arf_lastSnap, arf_snap, lastIndex, index, lastChange, change;
+        public Vector2 arf_lastReport, arf_currReport, arf_diff, hold; 
+        public int state;
+        public bool StateEvaluator = false;
 
         void UpdateARFReports(Vector2 position) {
-                arf_lastReport = arf_currReport;
-                arf_currReport = position;
+            arf_lastReport = arf_currReport;
+            arf_currReport = position;
 
-                arf_diff = arf_currReport - arf_lastReport;
+            arf_diff = arf_currReport - arf_lastReport;
 
-                arf_lastVel = arf_vel;
-                arf_vel =  ((Math.Sqrt(Math.Pow(arf_diff.X, 2) + Math.Pow(arf_diff.Y, 2)) / 1) / (_tabletHz / 100));
+            arf_lastVel = arf_vel;
+            arf_vel =  ((Math.Sqrt(Math.Pow(arf_diff.X, 2) + Math.Pow(arf_diff.Y, 2)) / 1) / (_tabletHz / 100));
 
-                arf_lastAccel = arf_accel;
-                arf_accel = arf_vel - arf_lastVel;
+            arf_lastAccel = arf_accel;
+            arf_accel = arf_vel - arf_lastVel;
 
-                arf_lastJerk = arf_jerk;
-                arf_jerk = arf_accel - arf_lastAccel;
+            arf_lastJerk = arf_jerk;
+            arf_jerk = arf_accel - arf_lastAccel;
 
-                arf_snap = arf_jerk - arf_lastJerk;
-                Console.WriteLine(arf_accel);
-                Console.WriteLine(arf_jerk);
-                Console.WriteLine("-------------------------");
+            arf_lastSnap = arf_snap;
+            arf_snap = arf_jerk - arf_lastJerk;
+
+            lastIndex = index;
+            index = Math.Abs(arf_accel) + Math.Abs(arf_jerk);
+
+
+            lastChange = change;
+            change = index + lastIndex;
+
+            StateEvaluator = true;
+
+            Console.WriteLine("-------------------------");
+            Console.WriteLine(arf_vel);
+            Console.WriteLine(arf_accel);
+            Console.WriteLine(arf_jerk);
+            Console.WriteLine(index);
+            Console.WriteLine("-------------------------");
         }
 
-        
+        public Vector2 FakeAdaptiveRadialFollow(Vector2 position) {
+            
+            if (StateEvaluator) {
+                StateEvaluator = false;
+                if (
+                    (((arf_lastAccel < 0) | (arf_lastVel < 10)) && (arf_accel > 0) && ((arf_jerk) / (Math.Log(arf_lastVel / 10 + 1) + 1) > 1)) |
+                    (((arf_accel) / (Math.Log(arf_lastVel + 1) + 1) > 1) && ((arf_jerk) / (Math.Log(arf_lastVel / 20 + 1) + 1) > 1))
+                )
+                {
+                    if (state == 0) {
+                        hold = arf_lastReport;
+                        state = 1;
+                    }
+                    position = hold;
+                }
+                else if (state > 0) {
+                    if (arf_accel > 0) {
+                        if ((arf_jerk > 0) && ((state == 1) | (state == 2))) {
+                            state = 2;
+                            position = hold;
+                        }
+                        else {
+                            if ((arf_accel / (Math.Log(arf_lastVel + 1) + 1) > 1) | arf_vel > 75) {
+                                position = hold;
+
+                            }
+                            else state = 0;
+                        }
+                    }
+                    else if (arf_jerk < 0) {
+                        state = 3;
+                        position = hold;
+                    }
+                    else {
+                        state = 0;
+                    }
+
+                }
+            }
+            else {
+                if (state > 0) {
+                    position = hold;
+                }
+
+
+            }
+
+            Console.WriteLine("---" + state + " " + arf_jerk);  
+
+            return position;
+
+
+        }
 
     }
 }
