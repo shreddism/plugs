@@ -1,9 +1,49 @@
 /* THE SOWOFTWARE IS PROWOVIDED “AS IS”, WITHOWOUWUT WARRANTY OWOF ANY KIND, EXPRESS OR IMPLIED, INCLUWUDING BUWUT NOWOT LIMITED TOWO THE WARRANTIES OWOF MERCHANTABILITY, FITNESS FOWOR A PARTICUWULAR PUWURPOWOSE AND NOWONINFRINGEMENT.
- * a plugi
+ * a plugin
  * feedback and stuwuff welcome
- * made by jaaakb (owosuwu)/jaaakb (discoword)
- * and permashredder (osu) / shreddism (discord)
+ *
+ * made by jaaakb (owosuwu)/jaaakb (discoword) (low-error inter-extrapolation, owo-ing the above text)
+ *
+ * and permashredder (osu) / shreddism (discord) (fake adaptive radial follow, bad code)
+ *
+ * if you're a noob looking at this, here's the instructions from the top:
+ * install git (and git bash on windows i think)
+ * install dotnet sdk 8.0
+ * install visual studio code (or other editor)
+ * make a new folder with nothing in it
+ * right click > open git bash in the folder
+ * enter below command
+ * git clone https://github.com/fridgesrunning/plugs
+ * wait for complete
+ * enter below command
+ * cd plugs
+ * enter below command
+ * git checkout jaaakb-version
+ * the source code for this filter will be in newfolder/plugs/TheBigOne/TheBigOne.cs
+ * open it with your editor
+ * fiddle with thresholds (maybe? you can see what it thinks by opening otd daemon. it should go 1 2 3 0 + be mad snappy on jumps and stay at 0 on flow) or really fiddle with anything. it's yours now
+ * open git bash in TheBigOne/ folder
+ * enter below command
+ * dotnet build -c release
+ * hope it compiles
+ * success? go to /bin/release/net8.0
+ * TheBigOne.dll is the file
+ * go to the folder where OpenTabletDriver is
+ * you should be able to make it portable if it isnt already, do this
+ * go to /userdata/Plugins
+ * make a new folder
+ * put TheBigOne.dll there
+ * restart otd, go to plugins
+ * select The End
+ * smooth transition time should be between 0-(however many ms your tablet takes to report at minimum) but I use 1
+ * TimeOffset should be from 0-1 (like temporal resampler prediction ratio option)
+ * Prediction learns from error and becomes better (thanks jaaakb)
+ * The prediction becomes this is so reliable after a few minutes of wiggling (it has to learn every restart) / fast gameplay there is no visible error.
+ * enter tablet hz in GetTabletHz, enable plugin (other default options should be fine, otherwise ur kinda screwed,)
+ * wiggle around aggressively at first, then do a fast spin around the edges of your area to make it learn
+ * have fun
  */
+
 
 
 using OpenTabletDriver.Plugin.Attributes;
@@ -776,7 +816,7 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
 
             }
 
-            Console.WriteLine("---" + state + " " + arf_jerk);  
+            Console.WriteLine("---" + state);  
 
             return position;
 
