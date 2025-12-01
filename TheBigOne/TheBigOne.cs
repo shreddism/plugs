@@ -1,7 +1,8 @@
 /* THE SOWOFTWARE IS PROWOVIDED “AS IS”, WITHOWOUWUT WARRANTY OWOF ANY KIND, EXPRESS OR IMPLIED, INCLUWUDING BUWUT NOWOT LIMITED TOWO THE WARRANTIES OWOF MERCHANTABILITY, FITNESS FOWOR A PARTICUWULAR PUWURPOWOSE AND NOWONINFRINGEMENT.
- * a plugin 5/10/2025
+ * a plugi
  * feedback and stuwuff welcome
  * made by jaaakb (owosuwu)/jaaakb (discoword)
+ * and permashredder (osu) / shreddism (discord)
  */
 
 
@@ -734,7 +735,7 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
                 StateEvaluator = false;
                 if (
                     (((arf_lastAccel < 0) | (arf_lastVel < 10)) && (arf_accel > 0) && ((arf_jerk) / (Math.Log(arf_lastVel / 10 + 1) + 1) > 1)) |
-                    (((arf_accel) / (Math.Log(arf_lastVel + 1) + 1) > 1) && ((arf_jerk) / (Math.Log(arf_lastVel / 20 + 1) + 1) > 1))
+                    (((arf_accel) / (Math.Log(arf_lastVel / 5 + 1) + 1) > 1) && ((arf_jerk) / (Math.Log(arf_lastVel / 10 + 1) + 1) > 1))
                 )
                 {
                     if (state == 0) {
@@ -757,7 +758,7 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
                             else state = 0;
                         }
                     }
-                    else if (arf_jerk < 0) {
+                    else if ((arf_jerk < 0) && (arf_vel > 50)) {
                         state = 3;
                         position = hold;
                     }
