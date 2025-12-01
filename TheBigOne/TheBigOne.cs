@@ -6,7 +6,7 @@
  *
  * and permashredder (osu) / shreddism (discord) (fake adaptive radial follow, bad code)
  *
- * if you're a noob looking at this, here's the instructions from the top:
+ * if you're super new looking at this, here's the instructions from the top:
  * install git (and git bash on windows i think)
  * install dotnet sdk 8.0
  * install visual studio code (or other editor)
