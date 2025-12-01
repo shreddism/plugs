@@ -761,12 +761,24 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
 
             StateEvaluator = true;
 
-            Console.WriteLine("-------------------------");
+            /* Console.WriteLine("-------------------------");
             Console.WriteLine(arf_vel);
             Console.WriteLine(arf_accel);
             Console.WriteLine(arf_jerk);
             Console.WriteLine(index);
-            Console.WriteLine("-------------------------");
+            Console.WriteLine("-------------------------"); */
+
+            /* Console.Write("v");
+                Console.WriteLine(arf_vel);
+                Console.Write("a");
+                Console.WriteLine(arf_accel);
+                Console.Write("j");
+                Console.WriteLine(arf_jerk);
+                Console.Write("s");
+                Console.WriteLine(arf_snap);
+                Console.WriteLine("x");
+                Console.WriteLine("d"); */
+
         }
 
         public Vector2 FakeAdaptiveRadialFollow(Vector2 position) {
@@ -775,12 +787,13 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
                 StateEvaluator = false;
                 if (
                     (((arf_lastAccel < 0) | (arf_lastVel < 10)) && (arf_accel > 0) && ((arf_jerk) / (Math.Log(arf_lastVel / 10 + 1) + 1) > 1)) |
-                    (((arf_accel) / (Math.Log(arf_lastVel / 5 + 1) + 1) > 1) && ((arf_jerk) / (Math.Log(arf_lastVel / 10 + 1) + 1) > 1))
+                    (((arf_accel) / (Math.Log(arf_lastVel / 200 + 1) + 1) > 1) && ((arf_jerk) / (Math.Log(arf_lastVel / 20 + 1) + 1) > 1))
                 )
                 {
                     if (state == 0) {
                         hold = arf_lastReport;
                         state = 1;
+                        
                     }
                     position = hold;
                 }
@@ -789,6 +802,7 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
                         if ((arf_jerk > 0) && ((state == 1) | (state == 2))) {
                             state = 2;
                             position = hold;
+                            
                         }
                         else {
                             if ((arf_accel / (Math.Log(arf_lastVel + 1) + 1) > 1) | arf_vel > 75) {
@@ -807,6 +821,43 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
                     }
 
                 }
+
+                /* if (state == 0) {
+                    Console.WriteLine("vr" + 255);
+                    Console.WriteLine("ar" + 0);
+                    Console.WriteLine("jr" + 0);
+                    Console.WriteLine("sr" + 0);
+                    Console.WriteLine("sb" + (int)Math.Clamp((arf_accel) / (Math.Log(arf_lastVel / 200 + 1) + 1) * 255, 0, 255));
+                    Console.WriteLine("jb" + (int)Math.Clamp((arf_jerk) / (Math.Log(arf_lastVel / 20 + 1) + 1) * 255, 0, 255));
+                }
+                else if (state == 1) {
+                    Console.WriteLine("vr" + 0);
+                    Console.WriteLine("ar" + 255);
+                    Console.WriteLine("jr" + 0);
+                    Console.WriteLine("sr" + 0);
+                    Console.WriteLine("sb" + 0);
+                    Console.WriteLine("jb" + 0);
+                }
+                else if (state == 2) {
+                    Console.WriteLine("vr" + 0);
+                    Console.WriteLine("ar" + 0);
+                    Console.WriteLine("jr" + 255);
+                    Console.WriteLine("sr" + 0);
+                    Console.WriteLine("sb" + 0);
+                    Console.WriteLine("jb" + 0);
+                }
+                else if (state == 3) {
+                    Console.WriteLine("vr" + 0);
+                    Console.WriteLine("ar" + 0);
+                    Console.WriteLine("jr" + 0);
+                    Console.WriteLine("sr" + 255);
+                    Console.WriteLine("sb" + 0);
+                    Console.WriteLine("jb" + 0);
+                }
+                Console.WriteLine("xx");
+                Console.WriteLine("ii"); */
+
+
             }
             else {
                 if (state > 0) {
@@ -816,7 +867,7 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
 
             }
 
-            Console.WriteLine("---" + state);  
+            /* Console.WriteLine("---" + state);   */
 
             return position;
 
