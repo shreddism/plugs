@@ -797,8 +797,8 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
             if (StateEvaluator) {
                 StateEvaluator = false;
                 if (
-                    (((arf_lastAccel < 0) | (arf_lastVel < 10)) && (arf_accel > 0) && ((ra1a_ra1_jerk) / (Math.Log(arf_lastVel / 10 + 1) + 1) > 1)) |
-                    (((arf_accel) / (Math.Log(arf_lastVel / 200 + 1) + 1) > 1) && ((ra1a_ra1_jerk) / (Math.Log(arf_lastVel / 20 + 1) + 1) > 1))
+                    (((ra1_accel < 0) | (arf_lastVel < 10)) && (arf_accel  / (Math.Log((arf_lastVel + Math.E) / 1 + 1) + 1) > 1) && ((ra1a_ra1_jerk) / (Math.Log((arf_lastVel + Math.E * 10) / 10 + 1) + 1) > 2)) |
+                    (((ra1_accel) / (Math.Log((arf_lastVel + Math.E) / 1 + 1) + 1) > 1) && ((ra1a_ra1_jerk) / (Math.Log((arf_lastVel + Math.E) / 1 + 1) + 1) > 1.25))
                 )
                 {
                     if (state == 0) {
@@ -810,22 +810,23 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
                 }
                 else if (state > 0) {
                     if (arf_accel > 0) {
-                        if ((arf_jerk > 0) && ((state == 1) | (state == 2))) {
+                        if ((arf_jerk / (Math.Log((arf_lastVel + Math.E * 5) / 5 + 1) + 1) > 3 ) && ((state == 1) | (state == 2))) {
                             state = 2;
                             position = hold;
                             
                         }
                         else {
-                            if ((ra1_accel / (Math.Log(arf_lastVel + 1) + 1) > 1) | arf_vel > 75) {
+                            if ((ra1_accel / (Math.Log((arf_lastVel + Math.E) + 1) + 1) > 1) | arf_vel > 30) {
                                 position = hold;
 
                             }
                             else state = 0;
                         }
                     }
-                    else if ((arf_jerk < 0) && (arf_vel > 75) && (ra1a_ra1j_ra1_snap - 0.5 * arf_accel) < 0) {
+                    else if ((arf_jerk < 0) && (arf_vel > 30) && (ra1a_ra1j_ra1_snap) < 0) {
                         state = 3;
-                        position = hold;
+                    //    position = 0.5f * hold + 0.5f * _outputPosition;
+                        hold = position;
                     }
                     else {
                         state = 0;
@@ -878,7 +879,10 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
                 if (state > 0) {
                     position = hold;
                 }
-
+                else if (state == 3) {
+                //    position = 0.5f * hold + 0.5f * _outputPosition;
+                    hold = position;
+                }
 
             }
 
