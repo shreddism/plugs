@@ -6,6 +6,8 @@
  *
  * and permashredder (osu) / shreddism (discord) (fake adaptive radial follow, bad code)
  *
+ * Massive Warning: aux buttons will hot-swap settings and the actions are displayed in daemon. The controls are configured for a Wacom Intuos Pro 2025 tablet. If not using this, comment out the entire "if (State is IAuxReport report)" block in ConsumeState.
+ *
  * if you're super new looking at this, here's the instructions from the top:
  * install git (and git bash on windows i think)
  * install dotnet sdk 8.0
@@ -674,12 +676,123 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
                 //    OnEmit();
                 //}
             }
-            else
+            else if (State is IAuxReport report)
+            {
+                auxInput = 7;
+
+                if (report.Raw[4] == 127)
+                    auxInput = 5;
+                else if (report.Raw[4] == 1)
+                    auxInput = 6;
+                else for (int i = 0; i < report.AuxButtons.Length; i++) {
+                    if (report.AuxButtons[i]) {
+                        auxInput = i;
+                    }
+                }
+
+                switch (auxInput) {
+                    case 0:
+                        if (selected == 0)
+                            selected = 5;
+                        else selected--;
+                    break;
+                    case 1:
+                        ChangeByScale(selected, 1);
+                    break;
+                    case 2:
+                        if (selected == 5)
+                            selected = 0;
+                        else selected++;
+                    break;
+                    case 3:
+                        ChangeByScale(selected, -1);
+                    break;
+                    case 5:
+                        ChangeByScale(selected, -0.05);
+                    break;
+                    case 6:
+                        ChangeByScale(selected, 0.05);
+                    break;
+                    default:
+                    break;
+
+                }
+
+                Console.WriteLine(selected);
+
+                saveSelect = selected;
+
+                Console.WriteLine("--- Setting Hotswap ---");
+                Console.WriteLine(Selection(selected) + "_smoothTransition: " + _smoothTransition);
+                Console.WriteLine(Selection(selected) + "_timeOffset: " + (_timeOffset + 1)); // to match display
+                Console.WriteLine(Selection(selected) + "Two: " + opt2);
+                Console.WriteLine(Selection(selected) + "Three: " + opt3);
+                Console.WriteLine(Selection(selected) + "Four: " + opt4);
+                Console.WriteLine(Selection(selected) + "Five: " + opt5);
+                Console.WriteLine("-----------------------");
+
+                selected = saveSelect;
+
+                OnEmit();
+            }
             {
                 OnEmit();
             }
         }
 
+        public int auxInput;
+
+        public double opt2, opt3, opt4, opt5;
+
+        public int selected = 0;
+
+        public int saveSelect;
+
+        public string Selection(int num) {
+            if (num == 0) {
+                selected--;
+                return "> ";
+            }
+            else { 
+                selected--;
+                return "  ";
+                
+            }
+        }
+
+        public void ChangeByScale(int selection, double scale) {
+            switch (selection) {
+            case 0:
+                _smoothTransition = fCleanUp2(_smoothTransition + (float)scale);
+            break;
+            case 1:
+                _timeOffset = fCleanUp2(_timeOffset + (float)scale);
+            break;
+            case 2:
+                opt2 = CleanUp2(opt2 + scale);
+            break;
+            case 3:
+                opt3 = CleanUp2(opt3 + scale);
+            break;
+            case 4:
+                opt4 = CleanUp2(opt4 + scale);
+            break;
+            case 5:
+                opt5 = CleanUp2(opt5 + scale);
+            break;
+            }
+
+        }
+
+        public double CleanUp2(double num) {
+            return Math.Round(num * 100) / 100;
+        }
+
+        public float fCleanUp2(float num) {
+            return (float)Math.Round(num * 100) / 100f;
+
+        }
+        
         protected override void UpdateState()
         {
             float ReportWatchElapsed = (float)_reportWatch.Elapsed.TotalMilliseconds;
@@ -777,7 +890,7 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
             Console.WriteLine(index);
             Console.WriteLine("-------------------------"); */
 
-            /* Console.Write("v");
+            Console.Write("v");
                 Console.WriteLine(arf_vel);
                 Console.Write("a");
                 Console.WriteLine(arf_accel);
@@ -786,7 +899,7 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
                 Console.Write("s");
                 Console.WriteLine(ra1a_ra1j_ra1_snap);
                 Console.WriteLine("x");
-                Console.WriteLine("d"); */
+                Console.WriteLine("d");
 
               //  Console.WriteLine(ra1a_ra1j_ra1_snap - arf_accel);
 
@@ -823,7 +936,7 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
                             else state = 0;
                         }
                     }
-                    else if ((arf_jerk < 0) && (arf_vel > 30) && (ra1a_ra1j_ra1_snap) < 0) {
+                    else if ((arf_jerk < 0) && (arf_vel > 30) && (ra1a_ra1j_ra1_snap - ra1_accel) < 0) {
                         state = 3;
                     //    position = 0.5f * hold + 0.5f * _outputPosition;
                         hold = position;
