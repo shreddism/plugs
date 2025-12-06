@@ -933,6 +933,7 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
         public Vector2 arf_lastReport, arf_currReport, arf_diff, hold; 
         public int state;
         public bool StateEvaluator = false;
+        public double combinationChange;
 
         void UpdateARFReports(Vector2 position) {
             arf_lastReport = arf_currReport;
@@ -961,20 +962,22 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
             ra1a_ra1j_ra1_snap = ra1a_ra1_jerk;
 
             lastIndex = index;
-            index = Math.Abs(arf_accel) + Math.Abs(arf_jerk);
+            index = (arf_jerk + arf_lastJerk + arf_accel + arf_lastAccel) / (Math.Log((Math.Pow(arf_lastVel - ra1_lastAccel, 1.2) + Math.E) / Math.E + 1) + 1);
 
 
             lastChange = change;
             change = index + lastIndex;
 
+            combinationChange = (change + index) - (lastChange  + lastIndex);
+
             StateEvaluator = true;
 
-            Console.WriteLine("-----------------------");
+            /* Console.WriteLine("-----------------------");
             Console.WriteLine(arf_vel);
             Console.WriteLine(arf_accel);
             Console.WriteLine(arf_jerk);
             Console.WriteLine(index);
-            Console.WriteLine("-----------------------");
+            Console.WriteLine("-----------------------"); */
 
    /*         Console.Write("v");   
                 Console.WriteLine(arf_vel);
@@ -995,14 +998,16 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
             
             if (StateEvaluator) {
                 StateEvaluator = false;
-                if (
+                if ((
                     (
                      (((ra1_accel < 0) | (arf_lastVel < 10)) && (arf_accel  / (Math.Log((arf_lastVel + Math.E * 10) / 10 + 1) + 1) > 1) && ((ra1a_ra1_jerk) / (Math.Log((arf_lastVel + Math.E * 10) / 10 + 1) + 1) > 3)) |
                      (((ra1_accel) / (Math.Log((arf_lastVel + Math.E) / 1 + 1) + 1) > 1.25) && ((ra1a_ra1_jerk) / (Math.Log((arf_lastVel + Math.E) / 1 + 1) + 1) > 1.25) |
-                     ((index + lastIndex) / (Math.Log((arf_lastVel / 100) + 1) + 1) > 10))
+                     (index + change > 5)) |
+                     (combinationChange > 3)
                     )
-                && ((index + lastIndex) / (Math.Log((arf_lastVel / 500) + 1) + 1) > 6)
-                && (ra1_accel + ra1a_ra1_jerk > 20)
+                && (index + change > 2)
+                && (ra1a_ra1j_ra1_snap + index + change > 4)
+                ) 
                 )
                 {
                     if (state == 0) {
@@ -1014,20 +1019,20 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
                 }
                 else if (state > 0) {
                     if (arf_accel > 0) {
-                        if ((arf_jerk / (Math.Log((arf_lastVel + Math.E * 5) / 5 + 1) + 1) > 10) && ((state == 1) | (state == 2))) {
+                        if ((index + change > 10) && ((state == 1) | (state == 2))) {
                             state = 2;
                             position = hold;
                             
                         }
                         else {
-                            if ((ra1_accel / (Math.Log((arf_lastVel + Math.E) + 1) + 1) > 1) | arf_vel > 50) {
+                            if ((ra1_accel / (Math.Log((arf_lastVel + Math.E) + 1) + 1) > 2) | arf_vel > 100) {
                                 position = hold;
 
                             }
                             else state = 0;
                         }
                     }
-                    else if ((arf_jerk < 0) && (arf_vel > 50) && (ra1a_ra1j_ra1_snap - DecellingThreshold * ra1_accel) < 0) {
+                    else if ((arf_jerk < 0) && (arf_vel > 100) && (ra1a_ra1j_ra1_snap - DecellingThreshold * ra1_accel) < 0) {
                         state = 3;
                         
                         position = hold;
@@ -1083,7 +1088,7 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
                 Console.WriteLine("xx");
                 Console.WriteLine("ii"); */
 
-            //      Console.WriteLine(state);
+                 Console.WriteLine((index + change) + "         " + state);
 
             }
             else {

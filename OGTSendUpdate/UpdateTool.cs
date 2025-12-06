@@ -60,16 +60,21 @@ namespace OGTUpdateTool
                 accel = velocity - lastVelocity;
                 jerk = accel - lastAccel;
                 snap = jerk - lastJerk;
-                index = Math.Abs(accel) + Math.Abs(jerk);
+                lastChange = change;
+                lastRa1Index = ra1Index;
+                lastIndex = index;
+                index = (jerk + lastJerk + accel + lastAccel) / (Math.Log((Math.Pow(lastVelocity, 1.1) + Math.E) / Math.E + 1) + 1);
+                ra1Index = lastIndex + index;
+                change = ra1Index - lastRa1Index;
 
                 Console.Write("v");
                 Console.WriteLine(velocity);
                 Console.Write("a");
                 Console.WriteLine(accel);
                 Console.Write("j");
-                Console.WriteLine(jerk);
+                Console.WriteLine(index);
                 Console.Write("s");
-                Console.WriteLine(snap);
+                Console.WriteLine(change);
                 Console.WriteLine("x");
                 
                 if (Wire)
@@ -93,7 +98,7 @@ namespace OGTUpdateTool
             }
         }
 
-        public double velocity, accel, jerk, snap, lastVelocity, lastAccel, lastJerk, count, index;
+        public double velocity, accel, jerk, snap, lastVelocity, lastAccel, lastJerk, count, lastIndex, index, lastChange, change, ra1Index, lastRa1Index;
         public Vector2 raw1Pos, raw2Pos;
 
     }

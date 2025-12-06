@@ -24,6 +24,10 @@ namespace ThresholdTester
             if (value is ITabletReport report) {
                 StatUpdate(report.Position);
 
+                PrintThresholds();
+
+                Console.WriteLine("Tablet Process (includes slow printing): " + processTime.Restart().TotalMicroseconds);   
+
             }
             else if (value is IAuxReport auxReport)
             {
@@ -68,21 +72,10 @@ namespace ThresholdTester
                     break;
                 }
 
-                    saveSelect = selected;
-
-                    Console.WriteLine("--- Setting Hotswap ---");
-                    Console.WriteLine(Selection(selected) + "Zero: " + opt0 + check0);
-                    Console.WriteLine(Selection(selected) + "One: " + opt1 + check1);
-                    Console.WriteLine(Selection(selected) + "Two: " + opt2 + check2);
-                    Console.WriteLine(Selection(selected) + "Three: " + opt3 + check3);
-                    Console.WriteLine(Selection(selected) + "Four: " + opt4 + check4);
-                    Console.WriteLine(Selection(selected) + "Five: " + opt5 + check5);
-                    Console.WriteLine("-----------------------");
-
-                    selected = saveSelect;
-
+                    
+                PrintThresholds();
                 
-                Console.WriteLine("Aux Process: " + processTime.Restart().TotalMicroseconds);                
+                Console.WriteLine("Aux Process (includes slow printing): " + processTime.Restart().TotalMicroseconds);                
             }
             Emit?.Invoke(value);
         }
@@ -135,11 +128,40 @@ namespace ThresholdTester
             vel1 = vel0;
             vel0 = Vector2.Distance(pos0, pos1);
 
-            Console.WriteLine(vel0);
+            accel1 = accel0;
+            accel0 = vel0 - vel1;
+
+            jerk1 = jerk0;
+            jerk0 = accel0 - accel1;
+            
+            snap1 = snap0;
+            snap0 = jerk0 - jerk1;
+
+
+            check0 = ((jerk0 + jerk1 + accel0 + accel1) / (Math.Log(Math.Pow(vel1, 1.1) / Math.E + 1) + 1)) > opt0;
+
+            check1 = (accel0 + accel1) > opt1;
+
+
             
         }
 
-        
+        public void PrintThresholds() {
+
+            saveSelect = selected;
+
+                    Console.WriteLine("--- Setting Hotswap ---");
+                    Console.WriteLine(Selection(selected) + "Zero: " + opt0 + " " + check0 + (check0 ? "-----------------" : ""));
+                    Console.WriteLine(Selection(selected) + "One: " + opt1 + " " + check1 + (check1 ? "-----------------" : ""));
+                    Console.WriteLine(Selection(selected) + "Two: " + opt2 + " " + check2 + (check2 ? "-----------------" : ""));
+                    Console.WriteLine(Selection(selected) + "Three: " + opt3 + " " + check3 + (check3 ? "-----------------" : ""));
+                    Console.WriteLine(Selection(selected) + "Four: " + opt4 + " " + check4 + (check4 ? "-----------------" : ""));
+                    Console.WriteLine(Selection(selected) + "Five: " + opt5 + " " + check5 + (check5 ? "-----------------" : ""));
+                    Console.WriteLine("-----------------------");
+
+            selected = saveSelect;
+
+        }
 
         public HPETDeltaStopwatch processTime = new HPETDeltaStopwatch(true);
         public int selected, saveSelect;
