@@ -23,7 +23,7 @@
  * git checkout jaaakb-version
  * the source code for this filter will be in newfolder/plugs/TheBigOne/TheBigOne.cs
  * open it with your editor
- * fiddle with thresholds (maybe? you can see what it thinks by opening otd daemon. it should go 1 2 3 0 + be mad snappy on jumps and stay at 0 on flow) or really fiddle with anything. it's yours now
+ * fiddle with thresholds (maybe? you can see what it thinks by making it print and opening otd daemon) or really fiddle with anything. it's yours now
  * open git bash in TheBigOne/ folder
  * enter below command
  * dotnet build -c release
@@ -64,7 +64,7 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
         {
         }
 
-        [Property("Duplicate report fix"), DefaultPropertyValue(false), ToolTip
+         [Property("Duplicate report fix"), DefaultPropertyValue(false), ToolTip
         (
         "Ignore extra duplicate reports, maybe when pen detects pressure or when a key is pressed.\n" +
         "May help on some new wacom tablets or other brand tablets. If it removes buggy cursor glitching (when pressing a button), it's working.\n"
@@ -74,6 +74,30 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
             get { return _doubleReportFix; }
             set { _doubleReportFix = value; }
         }
+
+        [Property("test paint"), DefaultPropertyValue(false), ToolTip
+           (
+        "test\n" +
+        "test\n"
+        )]
+        public bool GetPaintTest
+        {
+            get { return PaintTest; }
+            set { PaintTest = value; }
+        }
+        private bool PaintTest;
+
+        [Property("test weight averaging"), DefaultPropertyValue(false), ToolTip
+        (
+        "test\n" +
+        "test\n"
+        )]
+        public bool GetWeightAveragingTest
+        {
+            get { return WeightAver; }
+            set { WeightAver = value; }
+        }
+        private bool WeightAver;
 
         [Property("smooth transition time"), DefaultPropertyValue(1f), ToolTip
         (
@@ -222,7 +246,6 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
 
         private Vector2 _smoothTransitionVector;
 
-
         private void FilterWeightInitialisation() //super simple for now
         {
             //double WeightMulti = 1f - 0.005f * (1000f / _weights); //Will create weights with a minimum of ~0.006f
@@ -257,25 +280,32 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
 
             float[] DampeningWeight = new float[_derivatives];
 
-            DampeningWeight[_derivatives - 1] = _weight[_mCategoryStateWeight[_rawDMCat[_t[1], _derivatives - 1], _derivatives - 1]];
+            DampeningWeight[_derivatives - 1] = _weight[_mCategoryStateWeight[_rawDMCat[_t[0], _derivatives - 1], _derivatives - 1]];
             if(_derivatives > 1)
-                for (int d = _derivatives - 1; d < 0; d--)
+                for (int d = _derivatives - 1; d > 0; d--)
                 {
-                    DampeningWeight[d - 1] = _weight[_mCategoryStateWeight[_rawDMCat[_t[1], d - 1], d - 1]];
+                    DampeningWeight[d - 1] = _weight[_mCategoryStateWeight[_rawDMCat[_t[0], d - 1], d - 1]];
                     if (DampeningWeight[d - 1] < DampeningWeight[d])
                         DampeningWeight[d - 1] = DampeningWeight[d];
                 }
 
-            for (int d = 1; d < _derivatives; d++)
-            {
+            if (Time <= 1)
+                for (int d = 1; d < _derivatives; d++)
+                {
                 TempVector += Time * _bestD[_t[0], d] * DampeningWeight[d];
                 Time *= TimeMulti;
+                }
+            else if (Time > 1f) //Bubblegum fix for predicting more than 1 report ahead
+                for (int d = 1; d < _derivatives; d++)
+                {
+                    TempVector += (1f + (Time - 1f) * d) * _bestD[_t[0], d] * DampeningWeight[d];
+                    //Time *= TimeMulti;
+                }
 
-                //if (_weight[_dCategoryStateWeight[_rawDDCat[_t[0], d], d]] == 0f)
-                //    d = _derivatives; //break 
-            }
 
-            
+
+            //System.Console.WriteLine(_rawDMCat[_t[0], 1] + " a " + _rawDMCat[_t[0], 2] + " a " + _rawDMCat[_t[0], 3] + " a " + _rawDMCat[_t[0], 4] + " a " + DampeningWeight[1] + " " + DampeningWeight[2] + " " + DampeningWeight[3] + " " + DampeningWeight[4]);
+
 
             return TempVector;
         }
@@ -341,24 +371,28 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
                 TempVector += _bestD[_t[1], d]; 
             }
 
+            //Vector2 ReductionVector = Vector2.Zero;
+
             for (int d = DMax; d > 0; d--) //We do not do this 'dampening' on position, that would be predicting the area your cursor is confined in. (do not look at d == 0)
             {
                 float BestError = System.Single.MaxValue; //(_rawD[_t[0], 0] - BestVector).Length();
                 int Category = _rawDMCat[_t[1], d];
-                float BestWeight = _weight[_mCategoryStateWeight[Category, d]];
+                //float BestWeight = _weight[_mCategoryStateWeight[Category, d]];
 
                 for (int w = 0; w < _weights; w++)
                 {
                     MagError[d, w] = (_rawD[_t[0], 0] - (TempVector - _bestD[_t[1], d] * (1f - _weight[w]))).Length();
-                    _mWeightError[d, w, Category] = MagError[d, w] - RawError[d - 1, _dCategoryStateWeight[_rawDDCat[_t[1], d - 1], d - 1]] + 0.99999f * _mWeightError[d, w, Category];
+                    _mWeightError[d, w, Category] = MagError[d, w] - RawError[d - 1, _mCategoryStateWeight[_rawDDCat[_t[1], d - 1], d - 1]] + 0.9999f * _mWeightError[d, w, Category];
 
                     if (_mWeightError[d, w, Category] < BestError)
                     { 
                         _mCategoryStateWeight[Category, d] = w;
                         BestError = _mWeightError[d, w, Category];
-                        BestWeight = _weight[w];
+                        //BestWeight = _weight[w];
                     }
                 }
+
+                //System.Console.WriteLine(d + " " + Category + " " + BestWeight);
 
                 TempVector -= _bestD[_t[1], d];
             }
@@ -366,26 +400,68 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
 
         private void FilterNormaliseError()
         {
-            float Weight1 = 0.1f;
+            float Weight1 = 0.001f;
             float Weight2 = 1f - Weight1;
             float Weigth3 = 1f - 2 * Weight1;
 
             for (int d = 0; d < _derivatives; d++)
+            {
+                float MMaxEr = System.Single.MaxValue;
+                float MMinEr = System.Single.MinValue;
+                float DMaxEr = System.Single.MaxValue;
+                float DMinEr = System.Single.MinValue;
                 for (int w = 0; w < _weights; w++)
                 {
                     _mWeightError[d, w, 0] = Weight1 * _mWeightError[d, w, 1] + Weight2 * _mWeightError[d, w, 0];
-                    _mWeightError[d, w, _categories - 1] = Weight1 * _mWeightError[d, w, _categories - 1] + Weight2 * _mWeightError[d, w, _categories - 2];
+                    _mWeightError[d, w, _categories - 1] = Weight1 * _mWeightError[d, w, _categories - 2] + Weight2 * _mWeightError[d, w, _categories - 1];
                     _dWeightError[d, w, 0] = Weight1 * _dWeightError[d, w, 1] + Weight2 * _dWeightError[d, w, 0];
-                    _dWeightError[d, w, _categories - 1] = Weight1 * _dWeightError[d, w, _categories - 1] + Weight2 * _dWeightError[d, w, _categories - 2];
+                    _dWeightError[d, w, _categories - 1] = Weight1 * _dWeightError[d, w, _categories - 2] + Weight2 * _dWeightError[d, w, _categories - 1];
+
+                    if (_mWeightError[d, w, 0] < MMinEr)
+                    {
+                        MMinEr = _mWeightError[d, w, 0];
+                        _mCategoryStateWeight[0, d] = w;
+                    }
+                    if (_mWeightError[d, w, _categories - 1] < MMaxEr)
+                    {
+                        MMaxEr = _mWeightError[d, w, _categories - 1];
+                        _mCategoryStateWeight[_categories - 1, d] = w;
+                    }
+                    if (_dWeightError[d, w, 0] < DMinEr)
+                    {
+                        DMinEr = _dWeightError[d, w, 0];
+                        _dCategoryStateWeight[0, d] = w;
+                    }
+                    if (_dWeightError[d, w, _categories - 1] < DMaxEr)
+                    {
+                        DMaxEr = _dWeightError[d, w, _categories - 1];
+                        _dCategoryStateWeight[_categories - 1, d] = w;
+                    }
                 }
+            }
 
             for (int d = 0; d < _derivatives; d++)
-                for (int w = 0; w < _weights; w++)
-                    for (int c = 1; c < _categories - 1; c++)
+                for (int c = 1; c < _categories - 1; c++)
+                {
+                    float MWEr = System.Single.MaxValue;
+                    float DWEr = System.Single.MinValue;
+                    for (int w = 0; w < _weights; w++)
                     {
                         _mWeightError[d, w, c] = Weight1 * (_mWeightError[d, w, c + 1] + _mWeightError[d, w, c - 1]) + Weigth3 * _mWeightError[d, w, c];
                         _dWeightError[d, w, c] = Weight1 * (_dWeightError[d, w, c + 1] + _dWeightError[d, w, c - 1]) + Weigth3 * _dWeightError[d, w, c];
+
+                        if (_mWeightError[d, w, c] < MWEr)
+                        {
+                            MWEr = _mWeightError[d, w, c];
+                            _mCategoryStateWeight[c, d] = w;
+                        }
+                        if (_dWeightError[d, w, c] < DWEr) 
+                        {
+                            DWEr = _dWeightError[d, w, c];
+                            _dCategoryStateWeight[c, d] = w;
+                        }
                     }
+                }
         }
 
         private void FilterInitialise()
@@ -548,7 +624,7 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
 
             _interpLeftOver = _interpTime - _reportDelta;
 
-            float InterpCatchupRatio = 0.5f;
+            float InterpCatchupRatio = 0.33f;
 
             if (_interpLeftOver > _leftoverDeltaMax)
             {
@@ -595,6 +671,8 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
                     _rawDDCat[_t[0], d] = _categories - 1;
 
                 float BestWeight = _weight[_dCategoryStateWeight[_rawDDCat[_t[0], d], d]];
+
+                //System.Console.WriteLine(d + " " + BestWeight);
 
                 //if (BestWeight != 0)
                     _bestD[_t[0], d] =      + BestWeight
@@ -664,6 +742,7 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
                     FilterStateUpdate(_rawPosition);
 
                     _runCalc = true;
+                    UpdateState();
                     //FilterStateUpdatePrediction();
                 }
 
@@ -814,29 +893,37 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
                     _statCalcTime = ((float)_reportWatch.Elapsed.TotalMilliseconds - ReportWatchElapsed) * 0.01f + 0.99f * _statCalcTime;
                 }
 
-                if(_duplicate > 0)
+                if (_duplicate > 0)
                 for(int d = 1; d <= _duplicate; d++)
                 {
-                     _outputPosition = FilterInterpolate((float)d / (float)(_duplicate + 1) * (1000f / Frequency) + ReportWatchElapsed);
+                     //_outputPosition = FilterInterpolate((float)d / (float)(_duplicate + 1) * (1000f / Frequency) + ReportWatchElapsed);
 
-                    while ((float)_reportWatch.Elapsed.TotalMilliseconds < (float)d / (float)(_duplicate + 1) * (1000f/Frequency)  + ReportWatchElapsed)
+                    double Time_Target = ((double)d / (double)(_duplicate + 1)) * (1000d / (double)Frequency) + (double)ReportWatchElapsed;
+                        //bool StuffSent = false;
+                    _outputPosition = FilterInterpolate((float)Time_Target);
+
+                    while (_reportWatch.Elapsed.TotalMilliseconds < Time_Target)
                     {
-                        d++;
-                        d--;
+                            d++;
+                            d--;
                     }
-                    //_outputPosition = FilterInterpolate((float)_reportWatch.Elapsed.TotalMilliseconds);
-                    tabletReport.Position = FakeAdaptiveRadialFollow(_outputPosition);
-                    tabletReport.Pressure = _pressure;
-                    OnEmit();
+
+                    //if (!StuffSent)
+                    //{
+                        //_outputPosition = FilterInterpolate((float)_reportWatch.Elapsed.TotalMilliseconds);
+                        tabletReport.Position = _outputPosition;
+                        tabletReport.Pressure = _pressure;
+                        OnEmit();
+                    //}
                 }
-        }
+            }
             else if (_stateReset != true)
             {
-                //FilterNormaliseError();
+                
                 _reportWatch.Stop();
                 _stateReset = true;
-
-                System.Console.WriteLine("Calculation time: " + _statCalcTime / (1000f / Frequency) +". If higher than or close to 1, reduce weights or derivatives.");
+                if(WeightAver) FilterNormaliseError();
+                System.Console.WriteLine("Calculation time: " + _statCalcTime / (1000f / Frequency) * (1 + _duplicate) + ". If higher than or close to 0.5, reduce weights or derivatives.");
             }
         }
 
