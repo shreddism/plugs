@@ -306,6 +306,7 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
 
             //System.Console.WriteLine(_rawDMCat[_t[0], 1] + " a " + _rawDMCat[_t[0], 2] + " a " + _rawDMCat[_t[0], 3] + " a " + _rawDMCat[_t[0], 4] + " a " + DampeningWeight[1] + " " + DampeningWeight[2] + " " + DampeningWeight[3] + " " + DampeningWeight[4]);
 
+            storelastPrediction = TempVector;
 
             return TempVector;
         }
@@ -725,6 +726,7 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
                     if (FilterCheckDuplicate(tabletReport.Position))
                     {
                         tabletReport.Position = FakeAdaptiveRadialFollow(_outputPosition);
+                        Console.WriteLine("???");
                         OnEmit();
                         return;
                     }
@@ -801,7 +803,7 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
                 saveSelect = selected;
 
                 Console.WriteLine("--- Setting Hotswap ---");
-                Console.WriteLine(Selection(selected) + "_smoothTransition: " + _smoothTransition);
+                Console.WriteLine(Selection(selected) + "_smoothTrasddasadsasdasdansition: " + _smoothTransition);
                 Console.WriteLine(Selection(selected) + "_timeOffset: " + (_timeOffset + 1)); // to match display
                 Console.WriteLine(Selection(selected) + "DecellingThreshold " + DecellingThreshold);
                 Console.WriteLine(Selection(selected) + "Lerp Per Interp Cycle After Snapping (Hold Amount Actually): " + LPICAS);
@@ -874,16 +876,11 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
         protected override void UpdateState()
         {
             float ReportWatchElapsed = (float)_reportWatch.Elapsed.TotalMilliseconds;
+            
 
             if (State is ITabletReport tabletReport && ReportWatchElapsed < 1.5f + _reportDelta + 2 * _leftoverDeltaMax - _leftoverDeltaMin)
             {
-                //if (_interpolation == true)
-                //{
-                    _outputPosition = FilterInterpolate(ReportWatchElapsed);
-                    tabletReport.Position = FakeAdaptiveRadialFollow(_outputPosition);
-                    tabletReport.Pressure = _pressure;
-                    OnEmit();
-                //}
+                
 
                 if (_runCalc) 
                 {
@@ -892,6 +889,18 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
 
                     _statCalcTime = ((float)_reportWatch.Elapsed.TotalMilliseconds - ReportWatchElapsed) * 0.01f + 0.99f * _statCalcTime;
                 }
+
+                //if (_interpolation == true)
+                //{
+                    _outputPosition = FilterInterpolate(ReportWatchElapsed);
+                    tabletReport.Position = FakeAdaptiveRadialFollow(_outputPosition);
+                    storelastPrediction = tabletReport.Position;
+                    tabletReport.Pressure = _pressure;
+                    
+                    OnEmit();
+                //}
+
+                
 
                 if (_duplicate > 0)
                 for(int d = 1; d <= _duplicate; d++)
@@ -930,7 +939,7 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
         public double arf_lastVel, arf_vel, arf_lastAccel, arf_accel, arf_lastLastJerk, arf_lastJerk, arf_jerk, arf_lastLastSnap, arf_lastSnap, arf_snap, lastIndex, index, lastChange, change;
         public double ra1_lastAccel, ra1_accel, ra1a_ra1_lastJerk, ra1a_ra1_jerk, ra1a_ra1j_ra1_snap;
         public double DecellingThreshold, LPICAS;
-        public Vector2 arf_lastReport, arf_currReport, arf_diff, hold; 
+        public Vector2 arf_lastReport, arf_currReport, arf_diff, hold, storelastPrediction; 
         public int state;
         public bool StateEvaluator = false;
         public double combinationChange;
@@ -1011,7 +1020,7 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
                 )
                 {
                     if (state == 0) {
-                        hold = arf_lastReport;
+                        hold = storelastPrediction;
                         state = 1;
                         
                     }
@@ -1088,7 +1097,7 @@ namespace QuantumDotNetIntangibleBlockchainDotComArtificialIntelligenceMachineLe
                 Console.WriteLine("xx");
                 Console.WriteLine("ii"); */
 
-                 Console.WriteLine((index + change) + "         " + state);
+           //      Console.WriteLine((index + change) + "         " + state);
 
             }
             else {
