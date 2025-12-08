@@ -47,6 +47,38 @@ namespace OGTUpdateTool
         )]
         public bool Stress { get; set; }
 
+        [Property("opt1"), DefaultPropertyValue(1.0), ToolTip
+        (
+            "Filter template:\n\n" +
+            "A property that appear as an input box.\n\n" +
+            "Has a numerical value."
+        )]
+        public double opt1 { get; set; }
+        
+        [Property("opt2"), DefaultPropertyValue(1.0), ToolTip
+        (
+            "Filter template:\n\n" +
+            "A property that appear as an input box.\n\n" +
+            "Has a numerical value."
+        )]
+        public double opt2 { get; set; }
+
+        [Property("opt3"), DefaultPropertyValue(1.0), ToolTip
+        (
+            "Filter template:\n\n" +
+            "A property that appear as an input box.\n\n" +
+            "Has a numerical value."
+        )]
+        public double opt3 { get; set; }
+
+        [Property("opt4"), DefaultPropertyValue(1.0), ToolTip
+        (
+            "Filter template:\n\n" +
+            "A property that appear as an input box.\n\n" +
+            "Has a numerical value."
+        )]
+        public double opt4 { get; set; }
+
         protected override void ConsumeState()
         {
             if (State is ITabletReport report)
@@ -60,10 +92,16 @@ namespace OGTUpdateTool
                 accel = velocity - lastVelocity;
                 jerk = accel - lastAccel;
                 snap = jerk - lastJerk;
+
+                if ((accel < 0) && (lastAccel > 0))
+                lastPeak = Math.Max(lastVelocity, 100);
+
+
+
                 lastChange = change;
                 lastRa1Index = ra1Index;
                 lastIndex = index;
-                index = (jerk + lastJerk + accel + lastAccel) / (Math.Log((Math.Pow(lastVelocity, 1.1) + Math.E) / Math.E + 1) + 1);
+                index = (Math.Abs(jerk + lastJerk) + Math.Abs(accel + lastAccel) / (Math.Log((Math.Pow(lastVelocity, opt1) + opt2) / opt3 + 1) + 1)) * Math.Min(Math.Pow(1 - (velocity / lastPeak), opt4), 1);
                 ra1Index = lastIndex + index;
                 change = ra1Index - lastRa1Index;
 
@@ -72,9 +110,9 @@ namespace OGTUpdateTool
                 Console.Write("a");
                 Console.WriteLine(accel);
                 Console.Write("j");
-                Console.WriteLine(index);
+                Console.WriteLine(jerk);
                 Console.Write("s");
-                Console.WriteLine(change);
+                Console.WriteLine(snap);
                 Console.WriteLine("x");
                 
                 if (Wire)
@@ -100,6 +138,9 @@ namespace OGTUpdateTool
 
         public double velocity, accel, jerk, snap, lastVelocity, lastAccel, lastJerk, count, lastIndex, index, lastChange, change, ra1Index, lastRa1Index;
         public Vector2 raw1Pos, raw2Pos;
+        public double lastPeak;
+        public bool ascending;
+        
 
     }
 }
