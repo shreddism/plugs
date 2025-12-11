@@ -77,7 +77,7 @@ namespace Plugin251208
                 double XD = Vector2.Dot(Vector2.Normalize(strdir0), Vector2.Normalize(pos0 - adjpos0));
                 
                 if (double.IsFinite(XD)) {
-                   adjpos0 = Vector2.Lerp(adjpos0, pos0, (float)Math.Max(0, XD * Math.Max(0.05f, Vector2.Distance(pos0, adjpos0) / 100.0f)));
+                   adjpos0 = Vector2.Lerp(adjpos0, pos0, (float)Math.Max(0, XD * Math.Min(1, Math.Max(0.05f, Vector2.Distance(pos0, adjpos0) / 100.0f))));
                     Console.WriteLine(Math.Max(0.05f, Vector2.Distance(pos0, adjpos0) / 250.0f));
                 }
                 else adjpos0 = Vector2.Lerp(adjpos0, pos0, (float)Math.Max(0, 0.1f));
