@@ -64,21 +64,26 @@ namespace Plugin251208
                 Console.WriteLine("1: " + adjdir1);
                 Console.WriteLine("2: " + adjdir2); */
 
-                adjdir0.Y = (float)(Math.Sign(help) * Math.Sqrt(Math.Abs(help)));
+                adjdir0.Y = help;
                 strdir0.X = (float)(Math.Cos(-j) * adjdir0.X - Math.Sin(-j) * adjdir0.Y);
                 strdir0.Y = (float)(Math.Sin(-j) * adjdir0.X + Math.Cos(-j) * adjdir0.Y);
                 adjpos1 = adjpos0;
 
                 if (reportStopwatch.Restart().TotalMilliseconds < 10)
                     adjpos0 = adjpos1 + strdir0;
-                else adjpos0 = pos0;
+                else {
+                    adjpos0 = pos0;
+                    dir0 = Vector2.Zero;
+                    dir1 = Vector2.Zero;
+                    dir2 = Vector2.Zero;
+                }
                 
                 strpos0 = adjpos0;
                 double XD = Vector2.Dot(Vector2.Normalize(strdir0), Vector2.Normalize(pos0 - adjpos0));
                 
                 if (double.IsFinite(XD)) {
-                   adjpos0 = Vector2.Lerp(adjpos0, pos0, (float)Math.Max(0, XD * Math.Min(1, Math.Max(0.05f, Vector2.Distance(pos0, adjpos0) / 100.0f))));
-                    Console.WriteLine(Math.Max(0.05f, Vector2.Distance(pos0, adjpos0) / 250.0f));
+                   adjpos0 = Vector2.Lerp(adjpos0, pos0, (float)Math.Max(0, XD * Math.Min(1, Math.Max(0.01f, Vector2.Distance(pos0, adjpos0) / 100.0f))));
+                    //Console.WriteLine(Math.Max(0.01f, Vector2.Distance(pos0, adjpos0) / 100.0f));
                 }
                 else adjpos0 = Vector2.Lerp(adjpos0, pos0, (float)Math.Max(0, 0.1f));
 
@@ -87,7 +92,7 @@ namespace Plugin251208
 
                 
                 
-                Console.WriteLine(adjpos0 - pos0);
+                Console.WriteLine(Vector2.Distance(adjpos0, pos0));
                 
 
 
