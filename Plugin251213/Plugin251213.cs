@@ -155,6 +155,8 @@ namespace Plugin251213
                     velocity *= MathF.Pow(1f / (float)(opt1 * mod1), delta);
 
                     outputPosition += velocity;
+
+                    outputPosition = Vector2.Lerp(outputPosition, currPosition, 0.1f);
                   
                 }
 
@@ -186,7 +188,7 @@ namespace Plugin251213
             snap1 = snap0;
             snap0 = jerk0 - jerk1;
 
-            mod1 = Math.Max((accel0 < 0 ? 1 : 0) * Math.Max(Math.Abs(accel0) + jerk0 + jerk1, 25) / 25, 1);
+            mod1 = Math.Max((accel0 < 0 ? 1 : 0) * Math.Max(Math.Abs(accel0) + jerk0 + jerk1, 50) / 50, 1);
             Console.WriteLine(pos0 - outputPosition);
             
         }
