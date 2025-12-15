@@ -5,17 +5,16 @@ using OpenTabletDriver.Plugin.Output;
 using OpenTabletDriver.Plugin.Tablet;
 using OpenTabletDriver.Plugin.Timing;
 
-namespace Plugin251213
+namespace Plugin251214
 {
-    [PluginName("Plugin251213")]
-    public class Plugin251213 : AsyncPositionedPipelineElement<IDeviceReport>
+    [PluginName("Plugin251214")]
+    public class Plugin251214 : AsyncPositionedPipelineElement<IDeviceReport>
     {
-        public Plugin251213() : base()
+        public Plugin251214() : base()
         {
         }
 
-        // It's fancy SpringInterpolator by imkunet
-        // This is NOT bullshit :)
+        // Smells weird.
 
         public override PipelinePosition Position => PipelinePosition.PreTransform;
 
@@ -63,10 +62,10 @@ namespace Plugin251213
                         ChangeByScale(selected, -1);
                     break;
                     case 5:
-                        ChangeByScale(selected, -0.05);
+                        ChangeByScale(selected, -0.01);
                     break;
                     case 6:
-                        ChangeByScale(selected, 0.05);
+                        ChangeByScale(selected, 0.01);
                     break;
                     default:
                     break;
@@ -149,6 +148,9 @@ namespace Plugin251213
                 || (reportStopwatch.Elapsed.TotalMilliseconds > 5)) {
                     outputPosition = currPosition;
                     velocity = Vector2.Zero;
+                    accel_v = Vector2.Zero;
+                    outputVelocity = Vector2.Zero;
+                    lastOutputVelocity = Vector2.Zero;
                     lastOutputPosition = outputPosition;
                     reportStopwatch.Restart();
                    
@@ -156,15 +158,21 @@ namespace Plugin251213
                 else {
                     var delta = (float)reportStopwatch.Restart().TotalMilliseconds / (float)opt2;
 
+                    lastOutputVelocity = outputVelocity;
+
                     lastOutputPosition = outputPosition;
 
-                    velocity += (1f / (float)(opt0 / mod1)) * (currPosition - outputPosition) * delta;
+                    accel_v += (1f / (float)(opt0 / mod1)) * ((pos0 - pos1) - outputVelocity) * delta;
 
-                    velocity *= MathF.Pow(1f / (float)(opt1 * mod1), delta);
+                    accel_v *= MathF.Pow(1f / (float)(opt1 * mod1), delta);
 
-                    outputPosition += velocity;
+                    outputVelocity += accel_v;
 
-                    //outputPosition = Vector2.Lerp(outputPosition, currPosition, 0.1f);
+                    outputPosition = lastOutputPosition + (outputVelocity / (float)opt3);
+
+                    Console.WriteLine(pos0 - outputPosition);
+
+                    outputPosition = Vector2.Lerp(outputPosition, currPosition, 0.05f);
                   
                 }
 
@@ -197,7 +205,7 @@ namespace Plugin251213
             snap1 = snap0;
             snap0 = jerk0 - jerk1;
 
-            mod1 = Math.Min(Math.Max((accel1 < 0 ? 1 : 0) * Math.Max(Math.Abs(accel0) + jerk0 + jerk1, 25) / 25, 1), 10);
+             mod1 = Math.Min(Math.Max((accel1 < 0 ? 1 : 0) * Math.Max(Math.Abs(accel0) + jerk0 + jerk1, 10) / 10, 1), 10);
             
         }
 
@@ -210,18 +218,19 @@ namespace Plugin251213
         public double opt0 = 1;
         public double opt1 = 5;
         public double opt2 = 10;
-        public double opt3;
         public double opt4;
         public double opt5;
 
         Vector2 currPosition, lastPosition;
         private HPETDeltaStopwatch reportStopwatch = new HPETDeltaStopwatch();
-        private float reportMsAvg = (1 / 300);
+        private double opt3 = (3.3);
         Vector2 velocity;
         Vector2 outputPosition, lastOutputPosition;
         public double vel0, vel1, accel0, accel1, jerk0, jerk1, snap0, snap1;
         public double mod0, mod1, mod2;
         Vector2 pos0, pos1;
         public double springvel0, springvel1;
+        Vector2 outputVelocity, lastOutputVelocity;
+        Vector2 accel_v;
     }
 }
