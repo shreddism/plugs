@@ -306,7 +306,7 @@ namespace AdaptiveRadialFollow
                 lastOutputPosition = outputPosition;
                 outputPosition += outputVelocity;
                 
-                outputPosition = Vector2.Lerp(outputPosition, pos0, 0.05f);
+                outputPosition = Vector2.Lerp(outputPosition, pos0, 0.01f);
                 Console.WriteLine(outputPosition - pos0);
                 report.Position = outputPosition;
 
