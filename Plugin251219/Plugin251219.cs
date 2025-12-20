@@ -39,7 +39,7 @@ namespace Plugin251219
                 
               //  Console.WriteLine(compensation);
 
-               Console.WriteLine(pos0 - outputPos0);
+               Console.WriteLine(scale);
 
                 outputPos0 = Vector2.Lerp(outputPos0, pos0, 0.01f);
                 
