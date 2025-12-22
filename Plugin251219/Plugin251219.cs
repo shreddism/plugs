@@ -28,9 +28,18 @@ namespace Plugin251219
                 dir1 = dir0;
                 dir0 = pos0 - pos1;
 
+                vel1 = vel0;
+                vel0 = Vector2.Distance(pos0, pos1);
+
+                accel0 = vel0 - vel1;
+
+                index = Math.Clamp(Math.Abs(accel0) / vel0, 0, 1);
+
                 outputVel0 = VelocityFilter(dir0);
 
                 outputPos0 = outputPos0 + outputVel0;
+
+
             
                 
              //   Console.WriteLine(Math.Sqrt(Math.Pow(dir0.X, 2) + Math.Pow(dir0.Y, 2)) - Math.Sqrt(Math.Pow(outputVel0.X, 2) + Math.Pow(outputVel0.Y, 2)));
@@ -39,7 +48,7 @@ namespace Plugin251219
                 
               //  Console.WriteLine(compensation);
 
-               Console.WriteLine(pos0 - outputPos0);
+              // Console.WriteLine(pos0 - outputPos0);
 
                 outputPos0 = Vector2.Lerp(outputPos0, pos0, 0.01f);
                 
@@ -175,6 +184,7 @@ namespace Plugin251219
 
         public Vector2 pos0, pos1, outputPos0, outputPos1, dir0, dir1, disc, outputVel0;
         public float dist, scale, compensation;
+        public double vel0, vel1, accel0;
         
         private bool vec2IsFinite(Vector2 vec) => float.IsFinite(vec.X) & float.IsFinite(vec.Y);
 
