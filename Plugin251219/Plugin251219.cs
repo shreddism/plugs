@@ -33,7 +33,10 @@ namespace Plugin251219
 
                 accel0 = vel0 - vel1;
 
-                index = Math.Clamp(Math.Abs(accel0) / vel0, 0, 1);
+                index = (float)Math.Clamp(Math.Pow(Math.Abs(accel0) / vel0, 2), 0, 1);
+
+                if (!float.IsFinite(index))
+                index = 1;
 
                 outputVel0 = VelocityFilter(dir0);
 
@@ -50,7 +53,7 @@ namespace Plugin251219
 
          //      Console.WriteLine(scale);
 
-                outputPos0 = Vector2.Lerp(outputPos0, pos0, 0.01f);
+                outputPos0 = Vector2.Lerp(outputPos0, pos0, Math.Max(0.01f, MathF.Pow(index, 3)));
                 
                 report.Position = outputPos0;
                 
@@ -112,7 +115,14 @@ namespace Plugin251219
             scale = (float)opt0 + (1 - (float)opt0) * 
             MathF.Pow(1 / (1 + (float)Math.Pow((float)opt1, -1 * (dist - (float)opt2) / MathF.Pow(compensation, (float)opt3))), (float)opt4 * compensation);
             
-            outputVel0 = Vector2.Lerp(outputVel0, velocity, scale);
+            realscale = Math.Clamp(Math.Max(scale, (float)index), 0, 1);
+
+            if (!float.IsFinite(realscale))
+            realscale = 1;
+             
+            
+            outputVel0 = Vector2.Lerp(outputVel0, velocity, realscale);
+            
 
             return outputVel0;
         }
@@ -183,7 +193,7 @@ namespace Plugin251219
         public double opt5 = 25;
 
         public Vector2 pos0, pos1, outputPos0, outputPos1, dir0, dir1, disc, outputVel0;
-        public float dist, scale, compensation;
+        public float dist, scale, compensation, index, realscale;
         public double vel0, vel1, accel0;
         
         private bool vec2IsFinite(Vector2 vec) => float.IsFinite(vec.X) & float.IsFinite(vec.Y);
