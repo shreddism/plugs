@@ -36,7 +36,7 @@ namespace DecelSensitiveLerper
                 pow = Math.Clamp(1 + (accel / velocity), 0, 1);
                 else pow = 1;
 
-                Console.WriteLine(pow);
+          //  Console.WriteLine(pow);
             }
             else OnEmit();
         }
