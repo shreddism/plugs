@@ -30,6 +30,9 @@ namespace Plugin251223
                 StatUpdate(report);
                 UpdateState();
             }
+            else if (State is IAuxReport auxReport) {
+                outputPos0 = pos0;
+            }
             else OnEmit();
         }
 
@@ -49,11 +52,13 @@ namespace Plugin251223
             {
                 alpha0 = (float)Math.Clamp(alpha0, 0, 1);
 
-                distance = dir0;
+                distance = (dir0);
 
                 rsVelU = (MathF.Pow(alpha0, 2) * rsVel0) + ((1 - MathF.Pow(alpha0, 2)) * rsVel1);
 
                 outputDir0 = Vector2.Multiply(Vector2.Normalize(distance), rsVelU * (delta));
+
+                Console.WriteLine(rsVelU - vel0);
 
                 
 
@@ -63,7 +68,7 @@ namespace Plugin251223
 
                 outputPos0 = outputPos0 + outputDir0;
 
-                outputPos0 = Vector2.Lerp(outputPos0, pos0, Math.Max(0.01f * MathF.Pow(Vector2.Dot(Vector2.Normalize(outputDir0), Vector2.Normalize(dir0)), 5), 0));
+                outputPos0 = Vector2.Lerp(outputPos0, pos0, Math.Max(0.05f * MathF.Pow(Vector2.Dot(Vector2.Normalize(outputDir0), Vector2.Normalize(pos0 - outputPos0)), 3), 0));
 
                 if (!vec2IsFinite(outputPos0)) {
                     emergency = true;
@@ -104,10 +109,10 @@ namespace Plugin251223
 
             jerk0 = accel0 - accel1;
 
-            rsAccel1 = accel1 + 0.5f * jerk0;
-            rsAccel0 = accel0 + 0.5f * jerk0;
+            rsAccel1 = accel1 + (jerk0 * 0.5f);
+            rsAccel0 = accel0 + (jerk0 * 0.5f);
 
-            rsVel1 = vel1 + 0.5f * rsAccel1;
+            rsVel1 = vel1 + 0.5f * (0.5f * rsAccel0 + 0.5f * rsAccel1);
             rsVel0 = vel0 + 0.5f * rsAccel0;
         }
 
