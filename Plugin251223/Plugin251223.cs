@@ -63,11 +63,14 @@ namespace Plugin251223
 
                 outputPos0 = outputPos0 + outputDir0;
 
-              //  outputPos0 = Vector2.Lerp(outputPos0, pos0, 0.05f);
+                outputPos0 = Vector2.Lerp(outputPos0, pos0, Math.Max(0.01f * MathF.Pow(Vector2.Dot(Vector2.Normalize(outputDir0), Vector2.Normalize(dir0)), 5), 0));
 
-                report.Position = outputPos0;
+                if (!vec2IsFinite(outputPos0)) {
+                    emergency = true;
+                }
+                else report.Position = outputPos0;
 
-                Console.WriteLine(outputPos0 - pos0);
+                
 
 
                 if (emergency) {
