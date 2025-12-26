@@ -29,6 +29,8 @@ namespace Plugin251225
                     
                 StatUpdate(report);
 
+                rememberLastReportOutputDir = (outputPos0 - outputPos1) / delta;
+
                 startPos = outputPos0;
                // UpdateState();
             }
@@ -42,6 +44,8 @@ namespace Plugin251225
             if (consume) {
                 alpha1 = 0;
                 consume = false;
+                Console.WriteLine("-- Consume");
+                Console.WriteLine(vel0);
             }
 
             alpha0 = (float)(reportStopwatch.Elapsed.TotalSeconds * Frequency / reportMsAvg);
@@ -53,12 +57,14 @@ namespace Plugin251225
 
             //    Console.WriteLine(alpha0);
 
-                distance = dir0;
+                distance = pos0 - startPos;
+
+            inheritance = (alpha0 - (alpha0 * alpha0)) * (1 - Math.Abs(Vector2.Dot(Vector2.Normalize(rememberLastReportOutputDir), Vector2.Normalize(distance)))) * rememberLastReportOutputDir;
 
                 outputPos1 = outputPos0;
-                outputPos0 = Vector2.Lerp(startPos, pos0, alpha0);
+                outputPos0 = Vector2.Lerp(startPos, pos0, alpha0) + (inheritance * delta);
 
-            //    Console.WriteLine(Vector2.Distance(outputPos0, outputPos1) / delta);
+               
 
                 if ((Vector2.Distance(outputPos0, outputPos1) == 0) && !(vel0 == 0)) {
                     Console.WriteLine(delta);
@@ -79,6 +85,7 @@ namespace Plugin251225
                     emergency = false;
                 }
 
+                Console.WriteLine(Vector2.Distance(outputPos0, outputPos1) / delta);
 
                 State = report;
                 OnEmit();
@@ -104,7 +111,7 @@ namespace Plugin251225
 
 
 
-        Vector2 pos0, pos1, dir0, dir1, outputDir0, outputPos0, outputPos1, distance, startPos, rememberOutputDir;
+        Vector2 pos0, pos1, dir0, dir1, outputDir0, outputPos0, outputPos1, distance, startPos, rememberOutputDir, rememberLastReportOutputDir, inheritance;
         public float vel0, vel1, accel0, accel1, jerk0;
         public float alpha1, alpha0, delta;
         private HPETDeltaStopwatch reportStopwatch = new HPETDeltaStopwatch();
