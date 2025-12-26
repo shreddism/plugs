@@ -122,6 +122,8 @@ namespace Plugin251219
              
             
             outputVel0 = Vector2.Lerp(outputVel0, velocity, realscale);
+
+            Console.WriteLine(outputVel0);
             
 
             return outputVel0;
