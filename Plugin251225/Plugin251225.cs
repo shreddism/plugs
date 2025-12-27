@@ -59,7 +59,7 @@ namespace Plugin251225
 
                 distance = pos0 - startPos;
 
-            inheritance = (alpha0 - (alpha0 * alpha0)) * (1 - Math.Abs(Vector2.Dot(Vector2.Normalize(rememberLastReportOutputDir), Vector2.Normalize(distance)))) * rememberLastReportOutputDir;
+            inheritance = 2 *(alpha0 - (alpha0 * alpha0)) * MathF.Cbrt(1 - Math.Abs(Vector2.Dot(Vector2.Normalize(rememberLastReportOutputDir), Vector2.Normalize(distance)))) * rememberLastReportOutputDir;
 
                 outputPos1 = outputPos0;
                 outputPos0 = Vector2.Lerp(startPos, pos0, alpha0) + (inheritance * delta);
