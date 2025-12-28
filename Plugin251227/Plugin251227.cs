@@ -57,13 +57,13 @@ namespace Plugin251227
             
                 alpha0 += 2;
 
-                alpha0 = Math.Clamp(alpha0, 0, 4);
+                alpha0 = Math.Clamp(alpha0, 2, 3);
 
-                outputPos0 = pos2 + alpha0 * tVel + 0.5f * alpha0 * alpha0 * tAccel;
+                outputPos0 = pos2 + (alpha0 * tVel) + (0.5f * alpha0 * alpha0 * tAccel) + ((tAccel) - tAccel1) * (MathF.Max(MathF.Pow((alpha0 - 2), 3), 0));
 
                 report.Position = outputPos0;
 
-                Console.WriteLine(alpha0);
+              //  Console.WriteLine(alpha0);
 
                 State = report;
                 OnEmit();
@@ -76,9 +76,12 @@ namespace Plugin251227
             pos1 = pos0;
             pos0 = report.Position;
 
+           // Console.WriteLine(pos0 - predictedEndPos);
+
             // temporal resampler trajectory
 
             tMid = 0.5f * (pos0 + pos2);
+            tAccel1 = tAccel;
             tAccel = 2 * (tMid - pos1);
             tVel = (2 * pos1) - pos2 - tMid;
 
@@ -92,13 +95,22 @@ namespace Plugin251227
             accel0 = vel0 - vel1;
 
             jerk0 = accel0 - accel1;
+
+
+
+            Console.WriteLine(Vector2.Distance(pos0, predictedEndPos) / vel0);
+
+            predictedEndPos = pos2 + 3 * tVel + 0.5f * 3 * 3 * tAccel + ((tAccel) - tAccel1) * 1;
+
+
         }
 
 
 
         Vector2 pos0, pos1, dir0, dir1, outputDir0, outputPos0, outputPos1, distance, startPos, rememberOutputDir, rememberLastReportOutputDir, inheritance;
         Vector2 pos2;
-        Vector2 tMid, tAccel, tVel;
+        Vector2 predictedEndPos;
+        Vector2 tMid, tAccel, tAccel1, tVel;
         public float vel0, vel1, accel0, accel1, jerk0;
         public float alpha1, alpha0, delta;
         private HPETDeltaStopwatch reportStopwatch = new HPETDeltaStopwatch();
