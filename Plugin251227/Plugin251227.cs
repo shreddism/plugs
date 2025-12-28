@@ -32,7 +32,7 @@ namespace Plugin251227
                 
 
                 startPos = outputPos0;
-               // UpdateState();
+                UpdateState();
             }
             else OnEmit();
         }
