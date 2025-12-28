@@ -32,7 +32,7 @@ namespace Plugin251227
                 
 
                 startPos = outputPos0;
-               // UpdateState();
+                UpdateState();
             }
             else OnEmit();
         }
@@ -57,7 +57,7 @@ namespace Plugin251227
             
                 alpha0 += 2;
 
-                alpha0 = Math.Clamp(alpha0, 0, 4);
+                alpha0 = Math.Clamp(alpha0, 0, 3);
 
                 outputPos0 = pos2 + alpha0 * tVel + 0.5f * alpha0 * alpha0 * tAccel;
 
