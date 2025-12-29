@@ -43,7 +43,6 @@ namespace Plugin251227
 
             if (consume) {
                 alpha1 = 0;
-                consume = false;
                 emergency = false;
                 // Console.WriteLine("-- Consume");
                 // Console.WriteLine(vel0);
@@ -59,9 +58,18 @@ namespace Plugin251227
 
                 alpha0 = Math.Clamp(alpha0, 2, 3);
 
-                outputPos0 = pos2 + (alpha0 * tVel) + (0.5f * alpha0 * alpha0 * tAccel) + ((tAccel) - tAccel1) * (MathF.Max(MathF.Pow((alpha0 - 2), 3), 0));
+                checkPos0 = pos2 + (alpha0 * tVel) + (0.5f * alpha0 * alpha0 * tAccel) + ((tAccel) - tAccel1) * (MathF.Max(MathF.Pow((alpha0 - 2), 3), 0));
 
-                report.Position = outputPos0;
+                float pleasespeedineedthis = Vector2.Dot(Vector2.Normalize(checkPos0 - checkPos1), Vector2.Normalize(dir0));
+
+                Console.WriteLine(pleasespeedineedthis);
+
+                if (pleasespeedineedthis > 0.9f) {
+                report.Position = checkPos0;
+                checkPos1 = report.Position;
+                }
+                else report.Position = checkPos1;
+
 
               //  Console.WriteLine(alpha0);
 
@@ -97,12 +105,24 @@ namespace Plugin251227
             jerk0 = accel0 - accel1;
 
 
-
-            Console.WriteLine(Vector2.Distance(pos0, predictedEndPos));
+            PrintStuff();
+            
 
             predictedEndPos = pos2 + 3 * tVel + 0.5f * 3 * 3 * tAccel + ((tAccel) - tAccel1) * 1;
 
 
+        }
+
+        void PrintStuff() {
+            Console.WriteLine(" Start -------------------");
+            Console.WriteLine(pos0 - predictedEndPos);
+            Console.WriteLine(dir0);
+            Console.WriteLine(accel0);
+
+
+
+
+            Console.WriteLine(" End ---------------------");
         }
 
 
@@ -111,6 +131,7 @@ namespace Plugin251227
         Vector2 pos2;
         Vector2 predictedEndPos;
         Vector2 tMid, tAccel, tAccel1, tVel;
+        Vector2 checkPos0, checkPos1;
         public float vel0, vel1, accel0, accel1, jerk0;
         public float alpha1, alpha0, delta;
         private HPETDeltaStopwatch reportStopwatch = new HPETDeltaStopwatch();
