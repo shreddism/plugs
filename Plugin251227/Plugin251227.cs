@@ -98,7 +98,7 @@ namespace Plugin251227
 
 
 
-            Console.WriteLine(Vector2.Distance(pos0, predictedEndPos) / vel0);
+            Console.WriteLine(Vector2.Distance(pos0, predictedEndPos));
 
             predictedEndPos = pos2 + 3 * tVel + 0.5f * 3 * 3 * tAccel + ((tAccel) - tAccel1) * 1;
 
