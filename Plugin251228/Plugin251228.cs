@@ -25,6 +25,19 @@ namespace Plugin251228
                     reportMsAvg += ((consumeDelta - reportMsAvg) * 0.1f);
                 else emergency = true;
 
+                save = report.Position;
+
+                if (pressurefuck > 0)
+                    hold = save;
+
+                press1 = press0;
+
+                press0 = report.Pressure;
+
+
+                if ((press0 == 0 & press1 > 0) | (press1 == 0 & press0 > 0))
+                    pressurefuck = 4;
+
                     consume = true;
                     
                 StatUpdate(report);
@@ -45,6 +58,7 @@ namespace Plugin251228
             if (consume) {
                 alpha1 = 0;
                 emergency = false;
+                pressurefuck--;
                 // Console.WriteLine("-- Consume");
                 // Console.WriteLine(vel0);
             }
@@ -76,6 +90,11 @@ namespace Plugin251228
                 storelastPrediction = outputPos0;
 
                 report.Position = outputPos0;
+
+                if (pressurefuck > 0)
+                report.Position = save;
+                else save = report.Position;
+
 
               //  Console.WriteLine(alpha0);
 
@@ -143,6 +162,11 @@ namespace Plugin251228
         private HPETDeltaStopwatch reportStopwatch = new HPETDeltaStopwatch();
         private float reportMsAvg = (1 / 300);
         bool consume, emergency;
+
+        int pressurefuck;
+        Vector2 save;
+
+        public uint press0, press1;
 
 
         public double arf_lastVel, arf_vel, arf_lastAccel, arf_accel, arf_lastLastJerk, arf_lastJerk, arf_jerk, arf_lastLastSnap, arf_lastSnap, arf_snap, lastIndex, index, lastChange, change;
@@ -267,6 +291,11 @@ namespace Plugin251228
 
                 }
 
+                if ((Vector2.Distance(hold, outputPos0) > 5000) && (state > 0)) {
+                        state = 0;
+                        hold = position;
+                    }
+
                 /* if (state == 0) {
                     Console.WriteLine("vr" + 255);
                     Console.WriteLine("ar" + 0);
@@ -311,7 +340,11 @@ namespace Plugin251228
             }
             else {
                 if (state > 0) {
-                    position = hold;
+                    if (Vector2.Distance(hold, outputPos0) > 5000) {
+                        state = 0;
+                        hold = position;
+                    }
+                    else position = hold;
                 }
                 else if (state == 4) {
                 position = (float)LPICAS * hold + (1 - (float)LPICAS) * outputPos0;

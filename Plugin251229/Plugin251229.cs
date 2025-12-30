@@ -61,7 +61,7 @@ namespace Plugin251229
                 // Console.WriteLine(vel0);
             }
 
-            alpha0 = (float)(reportStopwatch.Elapsed.TotalSeconds * Frequency / reportMsAvg) * endt;
+            alpha0 = 0.15f + 0.85f * MathF.Sqrt((float)(reportStopwatch.Elapsed.TotalSeconds * Frequency / reportMsAvg)) * endt;
 
                 
                 alpha0 += top;
