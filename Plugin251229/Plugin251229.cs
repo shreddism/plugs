@@ -5,6 +5,8 @@ using OpenTabletDriver.Plugin.Output;
 using OpenTabletDriver.Plugin.Tablet;
 using OpenTabletDriver.Plugin.Timing;
 
+// dumb error mitigation idea playground everyone is here I JUST MADE SOME BULLSHIT
+
 namespace Plugin251229
 {
     [PluginName("Plugin251229")]
@@ -20,12 +22,16 @@ namespace Plugin251229
         {
             if (State is ITabletReport report)
             {
+
+                computeStopwatch.Restart();
                 var consumeDelta = (float)reportStopwatch.Restart().TotalMilliseconds;
                 if (consumeDelta < 50)
                     reportMsAvg += ((consumeDelta - reportMsAvg) * 0.1f);
                 else emergency = true;
 
+
                     consume = true;
+                    tlock = false;
                     
                 StatUpdate(report);
 
@@ -50,6 +56,13 @@ namespace Plugin251229
             if (State is ITabletReport report && PenIsInRange())
             {
 
+                if (dirsuccess) {
+                    rememberOutputDir = checkPos0 - checkPos1;
+                }
+                else rememberOutputDir = dir0;
+
+                pos1PreservationSociety = checkPos1;
+
                 updateDelta = (float)updateStopwatch.Elapsed.TotalMilliseconds;
 
                 alpha1 = alpha0 - 2;
@@ -57,15 +70,18 @@ namespace Plugin251229
             if (consume) {
                 alpha1 = 0;
                 emergency = false;
-             //Console.WriteLine("-- Consume");
+             Console.WriteLine("-- Consume");
                 // Console.WriteLine(vel0);
+                
             }
 
-            alpha0 = (float)(reportStopwatch.Elapsed.TotalSeconds * Frequency / reportMsAvg) * endt;
+            float ohmygodbruh = (float)((reportStopwatch.Elapsed.TotalSeconds * Frequency / reportMsAvg) * endt * (1000 / Frequency));
+
+            alpha0 = ohmygodbruh;
 
                 
                 alpha0 += top;
-               // Console.WriteLine(top);
+               // Console.WriteLine(Frequency / reportMsAvg);
 
 
                 if ((alpha0 > 1) && (top < 1)) {
@@ -76,7 +92,14 @@ namespace Plugin251229
                 
                 alpha0 = Math.Clamp(alpha0, 0, 1);
 
-                
+               // Console.WriteLine(consume);
+               // Console.WriteLine(bottom);
+
+               /* Console.WriteLine(rememberOutputDir);
+
+               Console.WriteLine(dirsuccess);
+
+                Console.WriteLine("----"); */
 
                 
 
@@ -90,34 +113,34 @@ namespace Plugin251229
             
                 alpha0 += 2;
 
-                if (consume) {
-                    
-                   // Console.WriteLine(consume);
-                    consume = false;
-                }
-
                 
 
+                
+                checkPos1 = checkPos0;
                 checkPos0 = pos2 + (alpha0 * tVel) + (0.5f * alpha0 * alpha0 * tAccel) + ((tAccel) - tAccel1) * (MathF.Max(MathF.Pow((alpha0 - 2), 3), 0));
 
                 
 
-                float pleasespeedineedthis = Vector2.Dot(Vector2.Normalize(checkPos0 - checkPos1), Vector2.Normalize(dir0));
+                 pleasespeedineedthis = Vector2.Dot(Vector2.Normalize(checkPos0 - checkPos1), Vector2.Normalize(rememberOutputDir));
 
                 
                 /* Console.WriteLine("---------------"); */
-                if (pleasespeedineedthis > 0.66f) {
+                if ((pleasespeedineedthis > 0.5f) || (alpha0 == 3) || tlock) {
 
                     if (bottom > 0) {
                     checkPos0 = Vector2.Lerp(checkPos0, checkPos1, bottom);
-                    bottom = 0;
+                    bottom *= 0.5f;
                     }
+                    checkPos1 = pos1PreservationSociety;
                 report.Position = checkPos0;
                 /* Console.WriteLine(Vector2.Distance(checkPos0, checkPos1));
                 Console.WriteLine(updateDelta);
                 Console.WriteLine(Vector2.Distance(checkPos0, checkPos1) / updateDelta);  */
                 
-                checkPos1 = report.Position;
+                
+                dirsuccess = true;
+                if (consume)
+                tlock = true;
                 }
                 else {
 
@@ -126,20 +149,23 @@ namespace Plugin251229
                     if (gooddir) {
                         gooddir = false;
                         if (bottom > 0) {
-                    checkPos0 = Vector2.Lerp(checkPos0, checkPos1, 0.5f * (bottom + (saveAlpha - alpha0)));
-                    bottom *= 0.5f;
+                            checkPos0 = Vector2.Lerp(checkPos0, checkPos1, (bottom));
+                            bottom *= 0.5f;
                     }
+                    checkPos1 = pos1PreservationSociety;
                         report.Position = checkPos0;             // Everything in the surrounding area is FUCKING stupid
-                        checkPos1 = report.Position;
+                        
+                        dirsuccess = true;
                     }
                     else {
-                         Console.WriteLine("oops");
-                    //Console.WriteLine(alpha0); 
-                    report.Position = checkPos1;
+                        // Console.WriteLine("oops");
+                        //Console.WriteLine(alpha0); 
+                        report.Position = checkPos1;
+                        dirsuccess = false;
                     } 
 
                     
-
+                
                     
                 
                      
@@ -152,12 +178,26 @@ namespace Plugin251229
                 /* Console.WriteLine(alpha0);
                 Console.WriteLine("---------------"); */
 
-
+                if (consume) {
+                    
+                   // Console.WriteLine(consume);
+                  //  Console.WriteLine(computeStopwatch.Restart().TotalMilliseconds);
+                    consume = false;
+                }
+                
+                if (!dirsuccess) {
+                Console.WriteLine("---------------");
+                    Console.WriteLine(alpha0);
+                Console.WriteLine("---------------");
+                }
                
 
                 State = report;
 
                 updateStopwatch.Restart();
+
+                
+                
 
 
                 OnEmit();
@@ -166,16 +206,21 @@ namespace Plugin251229
 
         public void CheckMoreDir() {
              saveAlpha = alpha0;
+             desperationSociety = 0.5f;
+             
             while (gooddir == false && saveAlpha < 3) {
                 saveAlpha += 0.1f;
 
                 checkPos0 = pos2 + (saveAlpha * tVel) + (0.5f * saveAlpha * saveAlpha * tAccel) + ((tAccel) - tAccel1) * (MathF.Max(MathF.Pow((saveAlpha - 2), 3), 0));
 
-                float kindahomeless = Vector2.Dot(Vector2.Normalize(checkPos0 - checkPos1), Vector2.Normalize(dir0));
+                 kindahomeless = Vector2.Dot(Vector2.Normalize(checkPos0 - checkPos1), Vector2.Normalize(rememberOutputDir));
 
-                if (kindahomeless > 0.66f) {
+                if (kindahomeless > desperationSociety) {
             
                 gooddir = true;
+                bottom += 0.5f * (saveAlpha - alpha0);
+              //  Console.WriteLine(0.5f * (saveAlpha - alpha0));
+              desperationSociety *= 0.75f;
                 }
             }
             
@@ -254,6 +299,7 @@ namespace Plugin251229
         public float alpha1, alpha0, delta, updateDelta;
         private HPETDeltaStopwatch reportStopwatch = new HPETDeltaStopwatch();
         private HPETDeltaStopwatch updateStopwatch = new HPETDeltaStopwatch();
+        private HPETDeltaStopwatch computeStopwatch = new HPETDeltaStopwatch();
         private float reportMsAvg = (1 / 300);
         bool consume, emergency;
         private float top, bottom;
@@ -261,6 +307,11 @@ namespace Plugin251229
         Vector2 checkedPos;
         float endt;
         float saveAlpha;
+        bool dirsuccess;
+        Vector2 pos1PreservationSociety;
+        float desperationSociety;
+        float pleasespeedineedthis, kindahomeless;
+        bool tlock;
 
         private bool vec2IsFinite(Vector2 vec) => float.IsFinite(vec.X) & float.IsFinite(vec.Y);
     }
