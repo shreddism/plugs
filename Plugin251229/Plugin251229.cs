@@ -32,7 +32,7 @@ namespace Plugin251229
 
                 bottom = 3 - alpha0;
 
-                Console.WriteLine("bottom: " + bottom);
+            //    Console.WriteLine("bottom: " + bottom);
 
                 
 
@@ -65,7 +65,7 @@ namespace Plugin251229
 
                 
                 alpha0 += top;
-                Console.WriteLine(top);
+               // Console.WriteLine(top);
 
 
                 if ((alpha0 > 1) && (top < 1)) {
@@ -92,7 +92,7 @@ namespace Plugin251229
 
                 if (consume) {
                     
-                    Console.WriteLine(consume);
+                   // Console.WriteLine(consume);
                     consume = false;
                 }
 
@@ -133,8 +133,8 @@ namespace Plugin251229
                         checkPos1 = report.Position;
                     }
                     else {
-                        /* Console.WriteLine("oops");
-                    Console.WriteLine(alpha0); */
+                         Console.WriteLine("oops");
+                    //Console.WriteLine(alpha0); 
                     report.Position = checkPos1;
                     } 
 
@@ -219,7 +219,7 @@ namespace Plugin251229
 
             endt = 0.5f + 0.5f * FSmoothstep(Math.Min(Math.Min(vel0, vel1), vel2), 0, 10);
 
-            Console.WriteLine(endt);
+        //    Console.WriteLine(endt);
 
         }
 
