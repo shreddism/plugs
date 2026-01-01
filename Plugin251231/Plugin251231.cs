@@ -29,13 +29,14 @@ namespace Plugin251231
                     
                 StatUpdate(report);
 
-                bottom += alpha0 - 3;
+                bottom = -1 * Math.Max(alpha0 - 3, 0);
 
                 if (top > 0.75f || bottom > 0.75f) {
                     top = 0;
                     bottom = 0;
                 }
 
+                updatesSinceLastReport = 0;
                 
 
                 startPos = outputPos0;
@@ -58,42 +59,60 @@ namespace Plugin251231
                 emergency = false;
                 // Console.WriteLine("-- Consume");
                 // Console.WriteLine(vel0);
-            }
-
-            alpha0 = (float)(reportStopwatch.Elapsed.TotalSeconds * Frequency / reportMsAvg) * (1000 / Frequency);
-            Console.WriteLine(alpha0);
-
-            alpha0 += (0.5f * top) - (0.5f * bottom);
-
-            top *= 0.75f;
-
-            bottom *= 0.75f;        // This is inconsiderate.
-
-            delta = alpha0 - alpha1;
-
-                if ((alpha0 > 1) && (top < 1)) {
-                    top = alpha0 - 1;
+                if ((alpha0PreservationSociety > 1) && (top < 1)) {
+                    top = alpha0PreservationSociety - 1;
+                    bottom = 0;
                 }
+                else top = 0;
+                consume = false;
+            }
+            else updatesSinceLastReport += 1;
+
+            
+                
+
+            float ohmygodbruh = (float)(reportStopwatch.Elapsed.TotalSeconds * Frequency / reportMsAvg) * (1000 / Frequency);
+
+            
+
+                alpha0 = ((1 - top) * ohmygodbruh) + 1.120f *top;
+            
+                
+
+                alpha0PreservationSociety = alpha0;
+
+                
 
                 
 
             
                 alpha0 += 2;
 
-                alpha0 = Math.Clamp(alpha0, 2, 3);
+                
 
-                checkPos0 = pos2 + (alpha0 * tVel) + (0.5f * alpha0 * alpha0 * tAccel) + ((tAccel) - tAccel1) * (MathF.Max(MathF.Pow((alpha0 - 2), 3), 0));
+                alpha0 = Math.Clamp(alpha0, 2, pathpreservationsociety);
+                Console.WriteLine(alpha0);
 
+              
+                 
+                checkPos0 = pos2 + (alpha0 * tVel) + (0.5f * alpha0 * alpha0 * tAccel) + ((tAccel) - tAccel1) * (MathF.Max(MathF.Pow((alpha0 - 2), 2), 0));
+                
                 float pleasespeedineedthis = Vector2.Dot(Vector2.Normalize(checkPos0 - checkPos1), Vector2.Normalize(dir0));
 
            //    Console.WriteLine(top + "   " + bottom);
 
-                if (pleasespeedineedthis > 0.66f) {
+                if (pleasespeedineedthis > 0) {
+                    if (bottom > 0) {
+                    checkPos0 = Vector2.Lerp(checkPos0, checkPos1, bottom);
+                    bottom *= 0.5f;
+                    }
                 report.Position = checkPos0;
                 checkPos1 = report.Position;
                 }
-                else report.Position = checkPos1;
-
+                else {
+                    report.Position = checkPos1;
+                    Console.WriteLine("oops");
+                }
 
               //  Console.WriteLine(alpha0);
 
@@ -101,6 +120,8 @@ namespace Plugin251231
                 OnEmit();
             }
         }
+
+
 
         public void StatUpdate(ITabletReport report) {
 
@@ -120,6 +141,7 @@ namespace Plugin251231
             dir1 = dir0;
             dir0 = pos0 - pos1;
 
+            vel2 = vel1;
             vel1 = vel0;
             vel0 = MathF.Sqrt(MathF.Pow(dir0.X, 2) + MathF.Pow(dir0.Y, 2));
 
@@ -128,11 +150,16 @@ namespace Plugin251231
 
             jerk0 = accel0 - accel1;
 
+            pathpreservationsociety = MathF.Min(MathF.Min(vel0, vel1), vel2);
+
+            pathpreservationsociety = 2.5f + 0.5f * FSmoothstep(pathpreservationsociety, 0, 40) + FSmoothstep(pathpreservationsociety, 40, 100);
 
             //PrintStuff();
             
 
             predictedEndPos = pos2 + 3 * tVel + 0.5f * 3 * 3 * tAccel + ((tAccel) - tAccel1) * 1;
+
+           // Console.WriteLine(vel0);
 
 
         }
@@ -149,6 +176,13 @@ namespace Plugin251231
             Console.WriteLine(" End ---------------------");
         }
 
+        public static float FSmoothstep(float x, float start, float end) // Copy pasted out of osu! pp. Thanks StanR 
+        {
+            x = (float)Math.Clamp((x - start) / (end - start), 0.0, 1.0);
+
+            return x * x * (3 - 2 * x);
+        }
+
 
 
         Vector2 pos0, pos1, dir0, dir1, outputDir0, outputPos0, outputPos1, distance, startPos, rememberOutputDir, rememberLastReportOutputDir, inheritance;
@@ -156,12 +190,16 @@ namespace Plugin251231
         Vector2 predictedEndPos;
         Vector2 tMid, tAccel, tAccel1, tVel;
         Vector2 checkPos0, checkPos1;
-        public float vel0, vel1, accel0, accel1, jerk0;
+        public float vel0, vel1, vel2, accel0, accel1, jerk0;
         public float alpha1, alpha0, delta;
         private HPETDeltaStopwatch reportStopwatch = new HPETDeltaStopwatch();
-        private float reportMsAvg = (1 / 300);
+        private float reportMsAvg = (1 / 305);
         bool consume, emergency;
-        float bottom, top;
+        float bottom, top, saveTop;
+        float alpha0PreservationSociety;
+        int updatesSinceLastReport;
+        float updateDelta, pathDelta;
+        float pathpreservationsociety;
 
         private bool vec2IsFinite(Vector2 vec) => float.IsFinite(vec.X) & float.IsFinite(vec.Y);
     }
