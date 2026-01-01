@@ -16,6 +16,15 @@ namespace Plugin251231
 
         public override PipelinePosition Position => PipelinePosition.PreTransform;
 
+        [BooleanProperty("Hover Over The Checkbox", ""), DefaultPropertyValue(false), ToolTip
+        (
+            "Lerps to usual output position by 0 (smoothstep transition) if acceleration is high and velocity is low.\n" +
+            "If you're not understanding all that, it gives a subtle 'adaptive radial follow'-like effect."
+        )]
+        public bool toggle1 {get; set;}
+        
+            
+
         protected override void ConsumeState()  // Report
         {
             if (State is ITabletReport report)
@@ -91,7 +100,7 @@ namespace Plugin251231
                 
 
                 alpha0 = Math.Clamp(alpha0, 2, pathpreservationsociety);
-                Console.WriteLine(alpha0);
+             //   Console.WriteLine(alpha0);
 
               
                  
@@ -101,17 +110,26 @@ namespace Plugin251231
 
            //    Console.WriteLine(top + "   " + bottom);
 
-                if (pleasespeedineedthis > 0) {
+                if (pleasespeedineedthis > 0.5f) {
                     if (bottom > 0) {
-                    checkPos0 = Vector2.Lerp(checkPos0, checkPos1, bottom);
-                    bottom *= 0.5f;
+                        checkPos0 = Vector2.Lerp(checkPos0, checkPos1, bottom);
+                        bottom *= 0.5f;
                     }
-                report.Position = checkPos0;
-                checkPos1 = report.Position;
+
+                    if (toggle1)
+                    actualoutputposlol = Vector2.Lerp(actualoutputposlol, checkPos0, allsoulsperished);
+
+                    else actualoutputposlol = checkPos0;
+
+                  //  Console.WriteLine(allsoulsperished);
+                    report.Position = actualoutputposlol;
+                    checkPos1 = actualoutputposlol;
                 }
                 else {
                     report.Position = checkPos1;
-                    Console.WriteLine("oops");
+                   actualoutputposlol = report.Position;
+
+                   // Console.WriteLine("oops");
                 }
 
               //  Console.WriteLine(alpha0);
@@ -155,6 +173,10 @@ namespace Plugin251231
             pathpreservationsociety = 2.5f + 0.5f * FSmoothstep(pathpreservationsociety, 0, 40) + FSmoothstep(pathpreservationsociety, 40, 100);
 
             //PrintStuff();
+
+            allsoulsperished = FSmoothstep(accel0 / (vel0 != 0 ? vel0 : 1), 0.2f, 0.05f);
+            /* Console.WriteLine(allsoulsperished);
+            Console.WriteLine(accel0); */
             
 
             predictedEndPos = pos2 + 3 * tVel + 0.5f * 3 * 3 * tAccel + ((tAccel) - tAccel1) * 1;
@@ -200,6 +222,8 @@ namespace Plugin251231
         int updatesSinceLastReport;
         float updateDelta, pathDelta;
         float pathpreservationsociety;
+        Vector2 actualoutputposlol;
+        float allsoulsperished;
 
         private bool vec2IsFinite(Vector2 vec) => float.IsFinite(vec.X) & float.IsFinite(vec.Y);
     }
