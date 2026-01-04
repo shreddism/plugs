@@ -126,12 +126,15 @@ namespace Plugin260103
                 outputDir0 /= reportMsAvg;
 
 
-                if (emergency < 0)
+                if (emergency < 0) {
                 outputPos0 += outputDir0;
+                outputPos0 = Vector2.Lerp(outputPos0, pos0 + dir0, 0.05f);
+                }
+                
 
                 //Console.WriteLine((Vector2.Distance(Vector2.Zero, thisshouldntexist) > 1000 + Vector2.Distance(Vector2.Zero, outputPos0)));
 
-                if ((!vec2IsFinite(outputPos0)) || (emergency > 0) || (Vector2.Distance(Vector2.Zero, pos0) > 1000 + Vector2.Distance(Vector2.Zero, outputPos0))) {
+                if ((!vec2IsFinite(outputPos0)) || (emergency > 0) || (Vector2.Distance(Vector2.Zero, pos0) > 5000 + Vector2.Distance(Vector2.Zero, outputPos0))) {
                 outputPos0 = report.Position;
                 }
 
