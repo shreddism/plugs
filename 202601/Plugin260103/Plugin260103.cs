@@ -223,6 +223,14 @@ namespace Plugin260103
 
                 Console.WriteLine(outputDir0.Y * -1);
 
+                Console.Write("ax");
+
+                Console.WriteLine(dir0.X / reportMsAvg);
+
+                Console.Write("ay");
+
+                Console.WriteLine(dir0.Y / -reportMsAvg);
+
                 Console.WriteLine("xx");
 
                 Console.WriteLine("dd");
