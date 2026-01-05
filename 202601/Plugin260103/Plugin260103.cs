@@ -140,7 +140,7 @@ namespace Plugin260103
 
                 report.Position = outputPos0;
 
-                Plot();
+               Plot();
 
             
 
@@ -194,10 +194,20 @@ namespace Plugin260103
 
             pathpreservationsociety = 2 + 0.5f * FSmoothstep(pathpreservationsociety, 0, 20);
 
+            pps2Dir = (dir0 + dir1) - (dir2 + dir2);
+
+            pps2 = 2 + 0.5f * FSmoothstep(pps2Dir.Length(), 0, 25);
+            
+            pathpreservationsociety = Math.Min(pathpreservationsociety, pps2);
+
+
+
+
             //PrintStuff();
             
+            estimationStart = (dir2 + 1.5f * tVel + 0.5f * 1.5f * 1.5f * tAccel) / reportMsAvg;
 
-            predictedEndPos = dir2 + 3 * tVel + 0.5f * 3 * 3 * tAccel;
+            estimationEnd = (dir2 + 2.5f * tVel + 0.5f * 2.5f * 2.5f * tAccel) / reportMsAvg;
 
            // Console.WriteLine(vel0);
 
@@ -234,6 +244,22 @@ namespace Plugin260103
 
                 Console.WriteLine(dir0.Y / -reportMsAvg);
 
+                Console.Write("jx");
+
+                Console.WriteLine(estimationStart.X);
+
+                Console.Write("jy");
+
+                Console.WriteLine(estimationStart.Y * -1);
+
+                Console.Write("sx");
+
+                Console.WriteLine(estimationEnd.X);
+
+                Console.Write("sy");
+
+                Console.WriteLine(estimationEnd.Y * -1);
+
                 Console.WriteLine("xx");
 
                 Console.WriteLine("dd");
@@ -263,9 +289,11 @@ namespace Plugin260103
         float alpha0PreservationSociety;
         int updatesSinceLastReport;
         float updateDelta, pathDelta;
-        float pathpreservationsociety;
+        float pathpreservationsociety, pps2;
         int emergency;
         Vector2 thisshouldntexist;
+        Vector2 estimationStart, estimationEnd;
+        Vector2 pps2Dir;
 
         private bool vec2IsFinite(Vector2 vec) => float.IsFinite(vec.X) & float.IsFinite(vec.Y);
     }
