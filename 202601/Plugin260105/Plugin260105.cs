@@ -142,8 +142,8 @@ namespace Plugin260105
 
                 if (emergency < 0) {
                 outputPos0 += outputDir0;
-                outputPos0 = Vector2.Lerp(outputPos0, pos0 + dir0, 0.02f);
-                outputPos0 = Vector2.Lerp(outputPos0, pos0, Math.Clamp(MathF.Pow(accel0 / -100, 2), 0, 0.1f));
+                outputPos0 = Vector2.Lerp(outputPos0, pos0 + dir0, 0.05f);
+                outputPos0 = Vector2.Lerp(outputPos0, pos0, Math.Clamp(MathF.Pow(accel0 / -200, 2), 0, 0.25f));
                 }
                 
 
