@@ -16,6 +16,18 @@ namespace Plugin260103
 
         public override PipelinePosition Position => PipelinePosition.PreTransform;
 
+        [Property("Limiter"), DefaultPropertyValue(2.5f), ToolTip
+        (
+            "Filter template:\n\n" +
+            "A property that appear as an input box.\n\n" +
+            "Has a numerical value."
+        )]
+        public float opt1 { 
+            set => _opt1 = (float)Math.Clamp(value, 2.5f, 3.0f);
+            get => _opt1;
+        }
+        public float _opt1;
+
         protected override void ConsumeState()  // Report
         {
             if (State is ITabletReport report)
@@ -32,7 +44,7 @@ namespace Plugin260103
                     
                 StatUpdate(report);
 
-                bottom = -1 * Math.Max(alpha0 - 2.5f, 0);
+                bottom = -1 * Math.Max(alpha0 - opt1, 0);
 
                 if (top > 0.75f || bottom > 0.75f) {
                     top = 0;
@@ -55,7 +67,7 @@ namespace Plugin260103
             if (State is ITabletReport report && PenIsInRange())
             {
 
-                alpha1 = alpha0 - 1.5f;
+                alpha1 = alpha0 - (opt1 - 1);
 
             if (consume) {
                 alpha1 = 0;
@@ -88,11 +100,11 @@ namespace Plugin260103
                 
 
             
-                alpha0 += 1.5f;
+                alpha0 += (opt1 - 1);
 
                 
 
-                alpha0 = Math.Clamp(alpha0, 1.5f, pathpreservationsociety);
+                alpha0 = Math.Clamp(alpha0, (opt1 - 1), pathpreservationsociety);
            //     Console.WriteLine(alpha0);
 
               
@@ -129,6 +141,7 @@ namespace Plugin260103
                 if (emergency < 0) {
                 outputPos0 += outputDir0;
                 outputPos0 = Vector2.Lerp(outputPos0, pos0 + dir0, 0.05f);
+                outputPos0 = Vector2.Lerp(outputPos0, pos0, Math.Clamp(MathF.Pow(accel0 / -200, 2), 0, 0.25f));
                 }
                 
 
@@ -192,11 +205,11 @@ namespace Plugin260103
 
             pathpreservationsociety = MathF.Min(MathF.Min(vel0, vel1), vel2);
 
-            pathpreservationsociety = 2 + 0.5f * FSmoothstep(pathpreservationsociety, 0, 20);
+            pathpreservationsociety = 2 + (opt1 - 2) * FSmoothstep(pathpreservationsociety, 0, 20);
 
             pps2Dir = (dir0 + dir1) - (dir2 + dir2);
 
-            pps2 = 2 + 0.5f * FSmoothstep(pps2Dir.Length(), 0, 25);
+            pps2 = 2 + (opt1 - 2) * 0.5f * FSmoothstep(pps2Dir.Length(), 0, 25) + (opt1 - 2) * 0.5f * FSmoothstep(pps2Dir.Length(), 50, 100);
             
             pathpreservationsociety = Math.Min(pathpreservationsociety, pps2);
 
@@ -205,9 +218,9 @@ namespace Plugin260103
 
             //PrintStuff();
             
-            estimationStart = (dir2 + 1.5f * tVel + 0.5f * 1.5f * 1.5f * tAccel) / reportMsAvg;
+            estimationStart = (dir2 + (opt1 - 1) * tVel + 0.5f * (opt1 - 1) * (opt1 - 1) * tAccel) / reportMsAvg;
 
-            estimationEnd = (dir2 + 2.5f * tVel + 0.5f * 2.5f * 2.5f * tAccel) / reportMsAvg;
+            estimationEnd = (dir2 + (opt1) * tVel + 0.5f * (opt1) * (opt1) * tAccel) / reportMsAvg;
 
            // Console.WriteLine(vel0);
 
@@ -259,7 +272,7 @@ namespace Plugin260103
                 Console.Write("sy");
 
                 Console.WriteLine(estimationEnd.Y * -1);
-
+ 
                 Console.WriteLine("xx");
 
                 Console.WriteLine("dd");
@@ -294,6 +307,7 @@ namespace Plugin260103
         Vector2 thisshouldntexist;
         Vector2 estimationStart, estimationEnd;
         Vector2 pps2Dir;
+        Vector2 xdddzs;
 
         private bool vec2IsFinite(Vector2 vec) => float.IsFinite(vec.X) & float.IsFinite(vec.Y);
     }
