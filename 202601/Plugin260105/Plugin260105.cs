@@ -28,6 +28,30 @@ namespace Plugin260105
         }
         public float _opt1;
 
+        [Property("Confidence 0"), DefaultPropertyValue(0f), ToolTip
+        (
+            "Filter template:\n\n" +
+            "A property that appear as an input box.\n\n" +
+            "Has a numerical value."
+        )]
+        public float opt2 { 
+            set => _opt2 = (float)Math.Clamp(value, 0.0f, 100.0f);
+            get => _opt2;
+        }
+        public float _opt2;
+
+        [Property("Confidence 1"), DefaultPropertyValue(0f), ToolTip
+        (
+            "Filter template:\n\n" +
+            "A property that appear as an input box.\n\n" +
+            "Has a numerical value."
+        )]
+        public float opt3 { 
+            set => _opt3 = (float)Math.Clamp(value, 0.0f, 100.0f);
+            get => _opt3;
+        }
+        public float _opt3;
+
         protected override void ConsumeState()  // Report
         {
             if (State is ITabletReport report)
@@ -78,7 +102,6 @@ namespace Plugin260105
                     bottom = 0;
                 }
                 else top = 0;
-                consume = false;
             }
             else updatesSinceLastReport += 1;
 
@@ -132,9 +155,9 @@ namespace Plugin260105
 
 
 
-                outputDir0 = Trajectory(dir0, dir1, dir2, alpha0) / reportMsAvg;
+                outputDir0 = Trajectory(dir0, dir1, dir2, alpha0, true, "t0 - ") / reportMsAvg;
 
-                sdirt1 = Trajectory(a1dir0, a1dir1, a1dir2, alpha0 + 0.5f) / reportMsAvg;
+                sdirt1 = Trajectory(a1dir0, a1dir1, a1dir2, alpha0 + 0.5f, true, "t1 - ") / reportMsAvg;
 
                 outputDir0 = Vector2.Lerp(outputDir0, sdirt1, pps3);
                 
@@ -155,7 +178,7 @@ namespace Plugin260105
 
                 report.Position = outputPos0;
 
-               Plot();
+                Plot();
 
             
 
@@ -163,7 +186,9 @@ namespace Plugin260105
 
 
 
-
+                if (consume) {
+                    consume = false;
+                }
 
               //  Console.WriteLine(alpha0);
 
@@ -218,14 +243,14 @@ namespace Plugin260105
 
             pps3 = FSmoothstep(dir3.Length() - dir0.Length(), -20, 0) - FSmoothstep(dir3.Length() - dir0.Length(), 0, 20);
 
-            Console.WriteLine(pps3);
+          //  Console.WriteLine(pps3);
 
 
             //PrintStuff();
             
-            estimationStart = Trajectory(dir0, dir1, dir2, opt1 - 1) / reportMsAvg;
+            estimationStart = Trajectory(dir0, dir1, dir2, opt1 - 1, false, "") / reportMsAvg;
 
-            estimationEnd = Trajectory(dir0, dir1, dir2, opt1) / reportMsAvg;
+            estimationEnd = Trajectory(dir0, dir1, dir2, opt1, false, "") / reportMsAvg;
             
 
            // Console.WriteLine(vel0);
@@ -291,11 +316,29 @@ namespace Plugin260105
             return x * x * (3 - 2 * x);
         }
 
-        Vector2 Trajectory(Vector2 p0, Vector2 p1, Vector2 p2, float t) {
+        Vector2 Trajectory(Vector2 p0, Vector2 p1, Vector2 p2, float t, bool check, String info) {
 
             Vector2 tMid = 0.5f * (p0 + p2);
+
+            if (consume && check) {
+             //   Console.WriteLine(info + (Vector2.Distance(p1, tMid)));
+            }
+
+            Vector2 diff = tMid - p1;
+
+            if (Vector2.Distance(p1, tMid) > 2) {
+                p1 += 2 * Vector2.Normalize(diff);
+            }
+            else p1 = tMid;
+
+         //   p1 = Vector2.Lerp(p1, tMid, FSmoothstep((Vector2.Distance(p1, tMid) / Vector2.Distance(p0, p2)), 0.1f, 0.33f));
+
+
             Vector2 tAccel = 2 * (tMid - p1);
             Vector2 tVel = (2 * p1) - p2 - tMid;
+
+            
+
             return p2 + t * tVel + 0.5f * t * t * tAccel;
 
         }
