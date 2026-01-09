@@ -18,6 +18,30 @@ namespace Plugin260108
 
         public event Action<IDeviceReport> Emit;
 
+        [Property("opt1"), DefaultPropertyValue(2f), ToolTip
+        (
+            "Filter template:\n\n" +
+            "A property that appear as an input box.\n\n" +
+            "Has a numerical value."
+        )]
+        public float opt1 { 
+            set => _opt1 = value;
+            get => _opt1;
+        }
+        public float _opt1;
+
+        [Property("opt2"), DefaultPropertyValue(0.5f), ToolTip
+        (
+            "Filter template:\n\n" +
+            "A property that appear as an input box.\n\n" +
+            "Has a numerical value."
+        )]
+        public float opt2 { 
+            set => _opt2 = value;
+            get => _opt2;
+        }
+        public float _opt2;
+
         public void Consume(IDeviceReport value)
         {
             if (value is ITabletReport report)
@@ -59,7 +83,7 @@ namespace Plugin260108
         }
 
         void FakeRadialFollow(Vector2 p0) {
-            FRFPoint = Vector2.Lerp(FRFPoint, p0, FSmootherstep(Vector2.Distance(FRFPoint, p0), 0, 0.5f + 4f * (MathF.Log(dir0.Length() / 1 + 1))));
+            FRFPoint = Vector2.Lerp(FRFPoint, p0, FSmootherstep(Vector2.Distance(FRFPoint, p0), MathF.Max(0, MathF.Log(opt2 * dir0.Length() + 1) - 1), 0.01f + opt1 * (MathF.Log(dir0.Length() / 1 + 1))));
         }
 
         void Plot() {
