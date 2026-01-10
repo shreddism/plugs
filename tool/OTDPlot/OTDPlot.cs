@@ -31,11 +31,11 @@ namespace OTDPlot
                 output = 0.9f * output + 0.1f * dir0;
 
 
-                Console.Write("vx");
+                Console.Write("ax");
 
                 Console.WriteLine(dir0.X);
 
-                Console.Write("vy");
+                Console.Write("ay");
 
                 Console.WriteLine(dir0.Y * -1);
 

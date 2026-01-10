@@ -135,6 +135,7 @@ namespace Plugin251231
               //  Console.WriteLine(alpha0);
 
                 State = report;
+              //  Plot();
                 OnEmit();
             }
         }
@@ -196,6 +197,13 @@ namespace Plugin251231
 
 
             Console.WriteLine(" End ---------------------");
+        }
+
+        void Plot() {
+            Console.Write("vx");
+            Console.WriteLine(dir0.X);
+            Console.Write("vy");
+            Console.WriteLine(dir0.Y * -1);
         }
 
         public static float FSmoothstep(float x, float start, float end) // Copy pasted out of osu! pp. Thanks StanR 

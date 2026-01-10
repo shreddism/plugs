@@ -5,12 +5,12 @@ using OpenTabletDriver.Plugin.Output;
 using OpenTabletDriver.Plugin.Tablet;
 using OpenTabletDriver.Plugin.Timing;       
 
-namespace Plugin260108
+namespace Plugin260109
 {
-    [PluginName("Plugin260108")]
-    public class Plugin260108 : IPositionedPipelineElement<IDeviceReport>
+    [PluginName("Plugin260109")]
+    public class Plugin260109 : IPositionedPipelineElement<IDeviceReport>
     {
-        public Plugin260108() : base()
+        public Plugin260109() : base()
         {
         }
 
@@ -18,7 +18,7 @@ namespace Plugin260108
 
         public event Action<IDeviceReport> Emit;
 
-        [Property("opt1"), DefaultPropertyValue(3f), ToolTip
+        [Property("opt1"), DefaultPropertyValue(0.1f), ToolTip
         (
             "Filter template:\n\n" +
             "A property that appear as an input box.\n\n" +
@@ -30,7 +30,7 @@ namespace Plugin260108
         }
         public float _opt1;
 
-        [Property("opt2"), DefaultPropertyValue(0.25f), ToolTip
+        [Property("opt2"), DefaultPropertyValue(0.05f), ToolTip
         (
             "Filter template:\n\n" +
             "A property that appear as an input box.\n\n" +
@@ -46,24 +46,47 @@ namespace Plugin260108
         {
             if (value is ITabletReport report)
             {
+                
                 pos1 = pos0;
                 pos0 = report.Position;
+                dir1 = dir0;
                 dir0 = pos0 - pos1;
+                ddir5 = ddir4;
+                ddir4 = ddir3;
+                ddir3 = ddir2;
+                ddir2 = ddir1;
+                ddir1 = ddir0;
+                ddir0 = dir0 - dir1;
+
+                index = MathF.Max(MathF.Max(ddir0.Length(),ddir1.Length()), MathF.Max(ddir2.Length(),ddir3.Length()));
             
-                if (reportStopwatch.Restart().TotalMilliseconds < 25) {
-                FakeRadialFollow(dir0);
-                outputPos0 += FRFPoint;
-                }
-                else {
-                    outputPos0 = pos0;
-                    FRFPoint = Vector2.Zero;
-                }
-
-                outputPos0 = Vector2.Lerp(outputPos0, pos0, 0.05f);
-
-                diff = dir0 - FRFPoint;
+            
+                //FakeRadialFollow(ddir0);
+            //  Console.WriteLine(FRFPoint);
+              FRFPoint = Vector2.Lerp(FRFPoint, ddir0, 0f + 1f * FSmootherstep(index, 0, 4));
+                outputDir0 += FRFPoint;
+                outputDir0 = Vector2.Lerp(outputDir0, dir0, 0.1f);
+                outputPos0 += outputDir0;
+                
+                outputPos0 = Vector2.Lerp(outputPos0, pos0, 0.1f);
                 report.Position = outputPos0;
-               // Plot();
+            
+              //  Console.WriteLine(index);
+
+                diff = ddir0 - FRFPoint;
+
+                
+
+                
+                Plot();
+            }
+            else if (value is IAuxReport FUCK) {
+                if (FUCK.Raw[4] == 127) {
+                    FRFPoint = Vector2.Zero;
+                    outputDir0 = Vector2.Zero;
+                    outputPos0 = pos0;
+                }
+                    
             }
             Emit?.Invoke(value);
         }
@@ -83,14 +106,14 @@ namespace Plugin260108
         }
 
         void FakeRadialFollow(Vector2 p0) {
-            FRFPoint = Vector2.Lerp(FRFPoint, p0, FSmootherstep(Vector2.Distance(FRFPoint, p0), MathF.Max(0, opt2 * MathF.Log(dir0.Length() + 1) - 1), 0.01f + opt1 * (MathF.Log(dir0.Length() / 1 + 1))));
+            FRFPoint = Vector2.Lerp(FRFPoint, p0, FSmootherstep(Vector2.Distance(FRFPoint, p0), MathF.Max(0, MathF.Log(opt2 * ddir0.Length() + 1) - 1), 1 + opt1 * (MathF.Log(ddir0.Length() / 1 + 1))));
         }
 
         void Plot() {
             Console.Write("vx");
-            Console.WriteLine(dir0.X);
+            Console.WriteLine(ddir0.X);
             Console.Write("vy");
-            Console.WriteLine(dir0.Y * -1);
+            Console.WriteLine(ddir0.Y * -1);
             Console.Write("ax");
             Console.WriteLine(FRFPoint.X);
             Console.Write("ay");
@@ -103,7 +126,8 @@ namespace Plugin260108
             Console.WriteLine("dd");
         }
 
-        Vector2 FRFPoint, pos0, pos1, dir0, diff, outputPos0;
+        Vector2 FRFPoint, pos0, pos1, dir0, dir1, ddir0, ddir1, ddir2, ddir3, ddir4, ddir5, diff, outputPos0, outputDir0, idxv;
+        float index, alsoindex;
         private bool vec2IsFinite(Vector2 vec) => float.IsFinite(vec.X) & float.IsFinite(vec.Y);
         private HPETDeltaStopwatch reportStopwatch = new HPETDeltaStopwatch();
 
