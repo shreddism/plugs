@@ -74,7 +74,7 @@ namespace Plugin260111
 
                 diff = dir0 - FRFPoint;
                 report.Position = outputPos0;
-                Plot();
+              //  Plot();
             }
             Emit?.Invoke(value);
         }

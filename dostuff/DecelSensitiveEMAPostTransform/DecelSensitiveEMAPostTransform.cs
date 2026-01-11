@@ -32,6 +32,18 @@ namespace DSEMA
         )]
         public float decelWeight { get; set; }
 
+        [Property("opt1"), DefaultPropertyValue(-1f), ToolTip
+        (
+            "Filter template:\n\n" +
+            "A property that appear as an input box.\n\n" +
+            "Has a numerical value."
+        )]
+        public float opt1 { 
+            set => _opt1 = value;
+            get => _opt1;
+        }
+        public float _opt1;
+
 
        public event Action<IDeviceReport> Emit;
 
@@ -46,13 +58,15 @@ namespace DSEMA
                 if (velocity == 0)
                 accel = 0;
                 else accel = velocity - (float)Math.Sqrt(Math.Pow(raw2Pos.X - raw3Pos.X, 2) + Math.Pow(raw2Pos.Y - raw3Pos.Y, 2));
-                emaWeight = ClampedLerp(decelWeight, normalWeight, Smootherstep(accel / velocity, -1f, 0));
+                emaWeight = ClampedLerp(decelWeight, normalWeight, MathF.Pow(Smootherstep(accel, opt1, 0), 1));
                 calc1Pos = vec2IsFinite(calc1Pos) ? calc1Pos : report.Position;
                 calc1Pos += emaWeight * (report.Position - calc1Pos);
                 calc1Pos = vec2IsFinite(calc1Pos) ? calc1Pos : report.Position;
-                if (velocity != 0)
                 report.Position = calc1Pos;
-                Console.WriteLine(velocity);
+                //Console.WriteLine("-----------------------");
+
+              //  Console.WriteLine(accel);
+               // Console.WriteLine(MathF.Pow(Smootherstep(accel, opt1, 0), 1));
             }
             Emit?.Invoke(value);
         }
