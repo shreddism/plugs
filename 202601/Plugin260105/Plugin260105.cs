@@ -239,7 +239,7 @@ namespace Plugin260105
 
             pps2 = 2 + (opt1 - 2) * 0.5f * FSmoothstep(pps2Dir.Length(), 0, 25) + (opt1 - 2) * 0.5f * FSmoothstep(pps2Dir.Length(), 50, 100);
             
-            pathpreservationsociety = Math.Max(pathpreservationsociety, pps2);
+            pathpreservationsociety = Math.Min(pathpreservationsociety, pps2);
 
             pps3 = FSmoothstep(dir3.Length() - dir0.Length(), -20, 0) - FSmoothstep(dir3.Length() - dir0.Length(), 0, 20);
 
