@@ -178,7 +178,7 @@ namespace Plugin260105
 
                 report.Position = outputPos0;
 
-                Plot();
+              //  Plot();
 
             
 
