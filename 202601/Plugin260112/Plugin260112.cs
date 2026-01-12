@@ -5,41 +5,83 @@ using OpenTabletDriver.Plugin.Output;
 using OpenTabletDriver.Plugin.Tablet;
 using OpenTabletDriver.Plugin.Timing;       
 
-namespace LineSkeleton
+namespace Plugin260112
 {
-    [PluginName("LineSkeleton")]
-    public class LineSkeleton : IPositionedPipelineElement<IDeviceReport>
+    [PluginName("Plugin260112")]
+    public class Plugin260112 : AsyncPositionedPipelineElement<IDeviceReport>
     {
-        public LineSkeleton() : base()
+        public Plugin260112() : base()
         {
         }
 
-        public PipelinePosition Position => PipelinePosition.PreTransform;
+        public override PipelinePosition Position => PipelinePosition.PreTransform;
 
         public event Action<IDeviceReport> Emit;
 
-        public void Consume(IDeviceReport value)
+        protected override void ConsumeState()
         {
-            if (value is ITabletReport report)
+            if (State is ITabletReport report)
             {
-                pos2 = pos1;
-                pos1 = pos0;
-                pos0 = report.Position;
-                line0 = new Line(pos2, pos0, 2);
-                line0.Step(1);
-                tp = line0.FullDistanceToPoint(pos1);
-                Plot();
+                StatUpdate(report);
+                ConditionalUpdate();
             }
-            Emit?.Invoke(value);
+            else OnEmit();
         }
 
-        void Plot() {
-            Console.Write("vx");
-            Console.WriteLine(tp.X);
-            Console.Write("vy");
-            Console.WriteLine(tp.Y * -1);
-            Console.WriteLine("xx");
-            Console.WriteLine("dd");
+        protected override void UpdateState()   // Interpolation
+        {
+            if (State is ITabletReport report && PenIsInRange())
+            {
+                
+                report.Position = pos0;
+                OnEmit();
+            }
+        }
+
+        void StatUpdate(ITabletReport report) {
+            pos2 = pos1;
+            pos1 = pos0;
+            pos0 = report.Position;
+
+            dir2 = dir1;
+            dir1 = dir0;
+            dir0 = (pos0 - pos1);
+
+            vel1 = vel0;
+            vel0 = dir0.Length();
+
+            accel1 = accel0;
+            accel0 = (vel0 - vel1);
+
+            ddir1 = ddir0;
+            ddir0 = (dir0 - dir1);
+
+            pointaccel1 = pointaccel0;
+            pointaccel0 = ddir0.Length();
+        }
+
+        void ConditionalUpdate() {
+            if (pointaccel0 > 5 && !(accel0 > 0 && accel1 < 0) && !(accel0 < 0 && accel1 > 0)) {
+                if (!clustermoving) {
+                    clusterpos1 = clusterpos0;
+                    clustermoving = true;
+                }
+            }
+            else {
+                clusterpos0 = pos0;
+                clustermoving = false;
+            }
+
+            if (Math.Abs(accel0) > 3 && !(accel0 > 0 && accel1 < 0) && !(accel0 < 0 && accel1 > 0)) {
+                if (!magclustermoving) {
+                    magcluster1 = magcluster0;
+                    magclustermoving = true;
+                }
+            }
+            else {
+                magcluster0 = vel0;
+                magclustermoving = false;
+            }
         }
 
         public class Line {
@@ -126,9 +168,13 @@ namespace LineSkeleton
             }
         }
 
-        Vector2 pos0, pos1, pos2, tp;
-        Line line0;
+        Vector2 pos0, pos1, pos2, dir0, dir1, dir2, ddir0, ddir1, planestart, planeend, peak;
+        float vel0, vel1, accel0, accel1, pointaccel0, pointaccel1;
+        float peakMag, planeMag;
+        Vector2 clusterpos0, clusterpos1;
+        float magcluster0, magcluster1;
+        Line plane, peaktozero, turnmirror;
+        bool clustermoving, magclustermoving;
         private bool vec2IsFinite(Vector2 vec) => float.IsFinite(vec.X) & float.IsFinite(vec.Y);
-
     }
 }

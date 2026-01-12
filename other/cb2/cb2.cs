@@ -78,6 +78,18 @@ namespace cb2
         }
         public float _opt5;
 
+        [Property("opt6"), DefaultPropertyValue(-10f), ToolTip
+        (
+            "Filter template:\n\n" +
+            "A property that appear as an input box.\n\n" +
+            "Has a numerical value."
+        )]
+        public float opt6 { 
+            set => _opt6 = value;
+            get => _opt6;
+        }
+        public float _opt6;
+
 
         [Property("Normal Weight"), DefaultPropertyValue(0.9f), ToolTip
         (
@@ -181,7 +193,7 @@ namespace cb2
 
                 report.Position = c2o;
 
-             //   Plot();
+               // Plot();
                 
 
                 State = report;
@@ -283,21 +295,21 @@ namespace cb2
 
                 Console.WriteLine(dir0.Y / -reportMsAvg);
 
-              /*  Console.Write("jx");
+                Console.Write("jx");
 
-                Console.WriteLine(estimationStart.X);
+                Console.WriteLine(diff.X);
 
                 Console.Write("jy");
 
-                Console.WriteLine(estimationStart.Y * -1);
+                Console.WriteLine(diff.Y * -1);
 
                 Console.Write("sx");
 
-                Console.WriteLine(estimationEnd.X);
+                Console.WriteLine(frfpa.X);
 
                 Console.Write("sy");
 
-                Console.WriteLine(estimationEnd.Y * -1);*/
+                Console.WriteLine(frfpa.Y * -1);
  
                 Console.WriteLine("xx");
 
@@ -357,6 +369,8 @@ namespace cb2
         }
 
         void VST() {
+            FRFPoint1 = FRFPoint;
+
             
             if (c1reportStopwatch.Restart().TotalMilliseconds < 25) {
                     
@@ -367,7 +381,7 @@ namespace cb2
 
 
                if (mag1 >= 1 && mag0 >= 1 && mag0 < 100) {
-             FRFPoint = Vector2.Lerp(FRFPoint, mag1 * Vector2.Normalize(FRFPoint), FSmootherstep(mag0 / mag1, 0.8f, 1) - FSmootherstep(mag0 / mag1, 1, 1.2f));
+             FRFPoint = Vector2.Lerp(FRFPoint, mag1 * Vector2.Normalize(FRFPoint), FSmootherstep(mag0 / mag1, 0.85f, 1) - FSmootherstep(mag0 / mag1, 1, 1.15f));
               
                 }
             
@@ -380,6 +394,9 @@ namespace cb2
 
                 c1o = Vector2.Lerp(c1o, chain00, 0.05f);
 
+                
+                frfpa = FRFPoint - FRFPoint1;
+
                 diff = (chain00 - chain01) - FRFPoint;
 
              //   Console.WriteLine(diff);
@@ -388,7 +405,7 @@ namespace cb2
         }
 
         void DSEMA() {
-            emaWeight = ClampedLerp(decelWeight, normalWeight, MathF.Pow(FSmootherstep(accel0, opt5, 0), 1));
+            emaWeight = ClampedLerp(decelWeight, normalWeight, MathF.Pow(FSmootherstep(accel0, opt6, 0), 1));
                 c2o = vec2IsFinite(c2o) ? c2o : c1o;
                 c2o += emaWeight * (c1o - c2o);                 // Gone insane
                 c2o = vec2IsFinite(c2o) ? c2o : c1o;
@@ -427,6 +444,7 @@ namespace cb2
         private HPETDeltaStopwatch c1reportStopwatch = new HPETDeltaStopwatch();
         float emaWeight;
         Vector2 diff;
+        Vector2 FRFPoint1, frfpa;
 
 
         private bool vec2IsFinite(Vector2 vec) => float.IsFinite(vec.X) & float.IsFinite(vec.Y);
