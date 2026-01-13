@@ -124,6 +124,14 @@ namespace LineSkeleton
                 Vector2 me = se - ss;
                 return DTP(mp, me);
             }
+
+        }
+
+        public Vector2 Trajectory(Vector2 p0, Vector2 p1, Vector2 p2) {
+            Vector2 tMid = 0.5f * (p0 + p2);
+            Vector2 tAccel = 2 * (tMid - p1);
+            Vector2 tVel = (2 * p1) - p2 - tMid;
+            return p2 + t * tVel + 0.5f * t * t * tAccel;
         }
 
         Vector2 pos0, pos1, pos2, tp;

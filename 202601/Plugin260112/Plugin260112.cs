@@ -16,14 +16,80 @@ namespace Plugin260112
 
         public override PipelinePosition Position => PipelinePosition.PreTransform;
 
+        [Property("VT Limiter"), DefaultPropertyValue(2.5f), ToolTip
+        (
+            "Filter template:\n\n" +
+            "A property that appear as an input box.\n\n" +
+            "Has a numerical value."
+        )]
+        public float vtlimiter { 
+            set => _vtlimiter = (float)Math.Clamp(value, 2.5f, 3.0f);
+            get => _vtlimiter;
+        }
+        public float _vtlimiter;
+
+        [Property("Direction Antichatter Inner"), DefaultPropertyValue(1f), ToolTip
+        (
+            "Filter template:\n\n" +
+            "A property that appear as an input box.\n\n" +
+            "Has a numerical value."
+        )]
+        public float dacInner { 
+            set => _dacInner = value;
+            get => _dacInner;
+        }
+        public float _dacInner;
+
+        [Property("Direction Antichatter Outer"), DefaultPropertyValue(5f), ToolTip
+        (
+            "Filter template:\n\n" +
+            "A property that appear as an input box.\n\n" +
+            "Has a numerical value."
+        )]
+        public float dacOuter { 
+            set => _dacOuter = value;
+            get => _dacOuter;
+        }
+        public float _dacOuter;
+
         public event Action<IDeviceReport> Emit;
 
         protected override void ConsumeState()
         {
             if (State is ITabletReport report)
             {
+                reportTime = (float)reportStopwatch.Restart().TotalMilliseconds;
+                if (reportTime < 25) {
+                    reportMsAvg += ((reportTime - reportMsAvg) * 0.1f);
+                    emergency = false;
+                }
+                else {
+                    emergency = true;
+                }
+                consume = true;
+
+                
+                      
                 StatUpdate(report);
                 ConditionalUpdate();
+                LineDrive();
+                
+
+                bottom = -1 * Math.Max(alpha0 - vtlimiter, 0);
+
+                if (top > 0.75f || bottom > 0.75f) {
+                    top = 0;
+                    bottom = 0;
+                }
+
+                
+               // testDir = stdir0;
+
+              //  Plot();
+
+         //       testOutput += testDir;
+         //       if (emergency)
+          //      testOutput = pos0;
             }
             else OnEmit();
         }
@@ -32,8 +98,44 @@ namespace Plugin260112
         {
             if (State is ITabletReport report && PenIsInRange())
             {
-                
-                report.Position = pos0;
+                if (consume) {
+                alpha1 = 0;
+                // Console.WriteLine("-- Consume");
+                // Console.WriteLine(vel0);
+                if ((alpha0PreservationSociety > 1) && (top < 1)) {
+                    top = alpha0PreservationSociety - 1;
+                    bottom = 0;
+                }
+                else top = 0;
+
+                consume = false;
+                }
+
+                float ohmygodbruh = (float)(reportStopwatch.Elapsed.TotalSeconds * Frequency / reportMsAvg) * (1000 / Frequency);
+
+                alpha0 = ((1 - top) * ohmygodbruh) + 1.120f * top;
+
+                alpha0PreservationSociety = alpha0;
+            
+                alpha0 += (vtlimiter - 1);
+
+                alpha0 = Math.Clamp(alpha0, (vtlimiter - 1), pathpreservationsociety);
+
+                testDir = Trajectory(stdir0, stdir1, stdir2, alpha0) / reportMsAvg;
+                sdirt1 = Trajectory(a1stdir0, a1stdir1, a1stdir2, alpha0 + 0.5f) / reportMsAvg;
+                testDir = Vector2.Lerp(testDir, sdirt1, pps3);
+
+                testOutput += testDir;
+
+                if (!emergency) {
+                    testOutput = Vector2.Lerp(testOutput, pos0 + dir0, 0.05f);
+                }
+
+                if (!vec2IsFinite(testOutput)) {
+                    testOutput = pos0;
+                }
+
+                report.Position = testOutput;
                 OnEmit();
             }
         }
@@ -58,30 +160,123 @@ namespace Plugin260112
 
             pointaccel1 = pointaccel0;
             pointaccel0 = ddir0.Length();
+
+            stdir2 = stdir1;
+            stdir1 = stdir0;
+            DAC();
+
+            a1stdir2 = a1stdir0;
+            a1stdir1 = a1stdir0;
+            a1stdir0 = (stdir1 + stdir0) / 2;
+
+            pathpreservationsociety = MathF.Min(MathF.Min(vel0, vel1), vel2);
+            pathpreservationsociety = 2 + (vtlimiter - 2) * FSmoothstep(pathpreservationsociety, 0, 20);
+            pps2Dir = (dir0 + dir1) - (dir2 + dir2);
+            pps2 = 2 + (vtlimiter - 2) * 0.5f * FSmoothstep(pps2Dir.Length(), 0, 25) + (vtlimiter - 2) * 0.5f * FSmoothstep(pps2Dir.Length(), 50, 100);
+            pathpreservationsociety = Math.Min(pathpreservationsociety, pps2);
+            pps3 = FSmoothstep(dir3.Length() - dir0.Length(), -20, 0) - FSmoothstep(dir3.Length() - dir0.Length(), 0, 20);
+            
         }
 
+        void DAC() {
+            float scale = FSmootherstep(Vector2.Distance(stdir0, dir0), Math.Max(0, FSmoothstep(vel0, 0, 25) * dacInner), 0.01f + (FSmoothstep(vel0, 0, 25) * dacOuter));
+            stdir0 = Vector2.Lerp(stdir0, dir0, scale);
+            if (vel0 >= 1 && vel1 >= 1 && vel0 < 100) {
+                stdir0 = Vector2.Lerp(stdir0, stdir1.Length() * Vector2.Normalize(stdir0), FSmootherstep(vel0, 5, 25) * (1 - scale) * (FSmootherstep(accel0, -5, 0) - FSmoothstep(accel0, 0, 5)));
+            }
+        }
+
+        void LineDrive() {
+            if (clusterjumping && accel0 < 0 & namelesstime1 > 6) {
+                linedrivetime = Math.Min(linedrivetime + 1, namelesstime1);
+                float scale1 = Math.Max(0.1f, Vector2.Dot(Vector2.Normalize(stdir0 - clusterdir1), Vector2.Normalize(Vector2.Zero - clusterdir1)));
+                Vector2 dist = ctozero.DirtyCurveDistanceToPoint(stdir0, (Vector2.Lerp(clusterdir1, Vector2.Zero, 0.5f) + arc), Line.SelfSmootherstep(linedrivetime), Line.SelfSmootherstep(linedrivetime + 2 / namelesstime1));
+                float scale2 = dist.Length() / scale1;
+                float scale3 = Math.Max(vel0 / 10, 1) * FSmoothstep(scale2, 10, 0);
+                stdir0 -= dist * scale3;
+                Console.WriteLine(dist);
+            }
+            else linedrivetime = 0;
+        }
+
+
+
         void ConditionalUpdate() {
-            if (pointaccel0 > 5 && !(accel0 > 0 && accel1 < 0) && !(accel0 < 0 && accel1 > 0)) {
-                if (!clustermoving) {
+            if (pointaccel0 > 6 && !(accel0 > 0 && accel1 < 0) && !(accel0 < 0 && accel1 > 0)) {
+                if (!clusterjumping) {
                     clusterpos1 = clusterpos0;
-                    clustermoving = true;
+                    clusterdir1 = clusterdir0;
+                    clusterjumping = true;
                 }
+                namelesstime0++;
+                ctozero = new Line(clusterdir1, Vector2.Zero, namelesstime1);
             }
             else {
                 clusterpos0 = pos0;
-                clustermoving = false;
+                clusterdir0 = stdir0;
+                clusterjumping = false;
+                namelesstime0 = 1;
             }
 
-            if (Math.Abs(accel0) > 3 && !(accel0 > 0 && accel1 < 0) && !(accel0 < 0 && accel1 > 0)) {
-                if (!magclustermoving) {
+            if (Math.Abs(accel0) > 4 && !(accel0 > 0 && accel1 < 0) && !(accel0 < 0 && accel1 > 0)) {
+                if (!magclusterjumping) {
                     magcluster1 = magcluster0;
-                    magclustermoving = true;
+                    magclusterjumping = true;
                 }
             }
             else {
-                magcluster0 = vel0;
-                magclustermoving = false;
+                magcluster0 = stdir0.Length();
+                magclusterjumping = false;
             }
+            
+            if (accel1 > 0 && accel0 < 0) {
+                arc = dir2 - dir0;
+            }
+        }
+
+        void Plot() {
+            Console.Write("vx");
+            Console.WriteLine(dir0.X);
+            Console.Write("vy");
+            Console.WriteLine(dir0.Y * -1);
+            Console.Write("ax");
+            Console.WriteLine(testDir.X);
+            Console.Write("ay");
+            Console.WriteLine(testDir.Y * -1);
+            Console.Write("jx");
+            Console.WriteLine(clusterdir1.X);
+            Console.Write("jy");
+            Console.WriteLine(clusterdir1.Y * -1);
+            Console.WriteLine("xx");
+            Console.WriteLine("dd");
+        }
+
+        public static float FSmoothstep(float x, float start, float end)
+        {
+            x = (float)Math.Clamp((x - start) / (end - start), 0.0, 1.0);
+
+            return x * x * (3 - 2 * x);
+        }
+
+        public static float FSmootherstep(float x, float start, float end)
+        {
+            x = (float)Math.Clamp((x - start) / (end - start), 0.0, 1.0);
+
+            return (float)(x * x * x * (x * (6.0 * x - 15.0) + 10.0));
+        }
+
+        public static float ClampedLerp(float start, float end, float scale)
+        {
+            scale = (float)Math.Clamp(scale, 0, 1);
+
+            return start + scale * (end - start);
+        }
+
+        public static Vector2 Trajectory(Vector2 p0, Vector2 p1, Vector2 p2, float t) {
+            Vector2 tMid = 0.5f * (p0 + p2);
+            Vector2 tAccel = 2 * (tMid - p1);
+            Vector2 tVel = (2 * p1) - p2 - tMid;
+            return p2 + t * tVel + 0.5f * t * t * tAccel;
         }
 
         public class Line {
@@ -166,15 +361,39 @@ namespace Plugin260112
                 Vector2 me = se - ss;
                 return DTP(mp, me);
             }
+
+            
         }
 
-        Vector2 pos0, pos1, pos2, dir0, dir1, dir2, ddir0, ddir1, planestart, planeend, peak;
-        float vel0, vel1, accel0, accel1, pointaccel0, pointaccel1;
+        
+
+        Vector2 pos0, pos1, pos2, dir0, dir1, dir2, dir3, ddir0, ddir1, planestart, planeend, peak;
+        float vel0, vel1, vel2, accel0, accel1, pointaccel0, pointaccel1;
         float peakMag, planeMag;
         Vector2 clusterpos0, clusterpos1;
+        Vector2 clusterdir0, clusterdir1;
         float magcluster0, magcluster1;
-        Line plane, peaktozero, turnmirror;
-        bool clustermoving, magclustermoving;
+        Line plane, ctozero, turnmirror;
+        bool clusterjumping, magclusterjumping;
+        Vector2 stdir0, stdir1, stdir2;
+        float stmag0, stmag1;
+        float reportTime;
+        float reportMsAvg = (1 / 305);
+        Vector2 testOutput, testDir;
+        bool emergency;
+        int namelesstime0, namelesstime1;
+        float linedrivetime;
+        bool linedriving;
+        Vector2 arc;
+        float savetime;
+        private HPETDeltaStopwatch reportStopwatch = new HPETDeltaStopwatch();
+        float alpha0, alpha1, alpha0PreservationSociety;
+        float top, bottom;
+        Vector2 a1stdir0, a1stdir1, a1stdir2;
+        Vector2 sdirt1;
+        Vector2 pps2Dir;
+        float pathpreservationsociety, pps2, pps3;
+        bool consume;
         private bool vec2IsFinite(Vector2 vec) => float.IsFinite(vec.X) & float.IsFinite(vec.Y);
     }
 }

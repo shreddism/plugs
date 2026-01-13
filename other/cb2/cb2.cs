@@ -316,7 +316,7 @@ namespace cb2
                 Console.WriteLine("dd"); 
         }
 
-        public static float FSmoothstep(float x, float start, float end) // Copy pasted out of osu! pp. Thanks StanR 
+        public static float FSmoothstep(float x, float start, float end)
         {
             x = (float)Math.Clamp((x - start) / (end - start), 0.0, 1.0);
 
