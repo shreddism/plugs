@@ -128,7 +128,8 @@ namespace Plugin260112
                 testOutput += testDir;
 
                 if (!emergency) {
-                    testOutput = Vector2.Lerp(testOutput, pos0 + dir0, 0.05f);
+                    testOutput = Vector2.Lerp(testOutput, pos0 + stdir0 + (stdir0 - stdir1), 0.025f);
+                    testOutput = Vector2.Lerp(testOutput, pos0, FSmootherstep(accel0, 0, -100));
                 }
 
                 if (!vec2IsFinite(testOutput)) {
@@ -172,7 +173,7 @@ namespace Plugin260112
             pathpreservationsociety = MathF.Min(MathF.Min(vel0, vel1), vel2);
             pathpreservationsociety = 2 + (vtlimiter - 2) * FSmoothstep(pathpreservationsociety, 0, 20);
             pps2Dir = (dir0 + dir1) - (dir2 + dir2);
-            pps2 = 2 + (vtlimiter - 2) * 0.5f * FSmoothstep(pps2Dir.Length(), 0, 25) + (vtlimiter - 2) * 0.5f * FSmoothstep(pps2Dir.Length(), 50, 100);
+            pps2 = 2 + (vtlimiter - 2) * 0.5f * FSmoothstep(pps2Dir.Length(), 0, 15) + (vtlimiter - 2) * 0.5f * FSmoothstep(pps2Dir.Length(), 15, 45);
             pathpreservationsociety = Math.Min(pathpreservationsociety, pps2);
             pps3 = FSmoothstep(dir3.Length() - dir0.Length(), -20, 0) - FSmoothstep(dir3.Length() - dir0.Length(), 0, 20);
             
@@ -182,7 +183,7 @@ namespace Plugin260112
             float scale = FSmootherstep(Vector2.Distance(stdir0, dir0), Math.Max(0, FSmoothstep(vel0, 0, 25) * dacInner), 0.01f + (FSmoothstep(vel0, 0, 25) * dacOuter));
             stdir0 = Vector2.Lerp(stdir0, dir0, scale);
             if (vel0 >= 1 && vel1 >= 1 && vel0 < 100) {
-                stdir0 = Vector2.Lerp(stdir0, stdir1.Length() * Vector2.Normalize(stdir0), FSmootherstep(vel0, 5, 25) * (1 - scale) * (FSmootherstep(accel0, -5, 0) - FSmoothstep(accel0, 0, 5)));
+                stdir0 = Vector2.Lerp(stdir0, stdir1.Length() * Vector2.Normalize(stdir0), FSmootherstep(vel0, 5, 25) * (1 - scale) * (FSmootherstep(stdir0.Length() - stdir1.Length(), -3, 0) - FSmoothstep(stdir0.Length() - stdir1.Length(), 0, 3)));
             }
         }
 
@@ -192,7 +193,7 @@ namespace Plugin260112
                 float scale1 = Math.Max(0.1f, Vector2.Dot(Vector2.Normalize(stdir0 - clusterdir1), Vector2.Normalize(Vector2.Zero - clusterdir1)));
                 Vector2 dist = ctozero.DirtyCurveDistanceToPoint(stdir0, (Vector2.Lerp(clusterdir1, Vector2.Zero, 0.5f) + arc), Line.SelfSmootherstep(linedrivetime), Line.SelfSmootherstep(linedrivetime + 2 / namelesstime1));
                 float scale2 = dist.Length() / scale1;
-                float scale3 = Math.Max(vel0 / 10, 1) * FSmoothstep(scale2, 10, 0);
+                float scale3 = Math.Max(vel0 / 10, 1) * FSmoothstep(scale2, 20, 0);
                 stdir0 -= dist * scale3;
                 Console.WriteLine(dist);
             }
@@ -230,7 +231,7 @@ namespace Plugin260112
             }
             
             if (accel1 > 0 && accel0 < 0) {
-                arc = dir2 - dir0;
+                arc = (dir0 - dir2) / 2;
             }
         }
 
