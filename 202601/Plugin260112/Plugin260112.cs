@@ -128,8 +128,8 @@ namespace Plugin260112
                 testOutput += testDir;
 
                 if (!emergency) {
-                    testOutput = Vector2.Lerp(testOutput, pos0 + stdir0 + (stdir0 - stdir1), 0.025f);
-                    testOutput = Vector2.Lerp(testOutput, pos0, MathF.Cbrt(FSmootherstep(accel0, 0, -100)));
+                    testOutput = Vector2.Lerp(testOutput, pos0 + testDir + (testDir - stdir1), 0.01f);
+                    testOutput = Vector2.Lerp(testOutput, pos0, MathF.Cbrt(FSmootherstep(accel0, 0, -200f)));
                 }
 
                 if (!vec2IsFinite(testOutput)) {
@@ -137,7 +137,8 @@ namespace Plugin260112
                 }
 
                 report.Position = testOutput;
-                Plot();
+                //Plot();
+                //Console.WriteLine(alpha0);
                 OnEmit();
             }
         }
@@ -147,10 +148,12 @@ namespace Plugin260112
             pos1 = pos0;
             pos0 = report.Position;
 
+            dir3 = dir2;
             dir2 = dir1;
             dir1 = dir0;
             dir0 = (pos0 - pos1);
 
+            vel2 = vel1;
             vel1 = vel0;
             vel0 = dir0.Length();
 
