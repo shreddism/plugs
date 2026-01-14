@@ -16,6 +16,18 @@ namespace Plugin260112
 
         public override PipelinePosition Position => PipelinePosition.PreTransform;
 
+        [Property("VT Toggle"), DefaultPropertyValue(true), ToolTip
+        (
+            "Filter template:\n\n" +
+            "A property that appear as an input box.\n\n" +
+            "Has a numerical value."
+        )]
+        public bool vtToggle { 
+            set => _vtToggle = value;
+            get => _vtToggle;
+        }
+        public bool _vtToggle;
+
         [Property("VT Limiter"), DefaultPropertyValue(2.5f), ToolTip
         (
             "Filter template:\n\n" +
@@ -28,7 +40,19 @@ namespace Plugin260112
         }
         public float _vtlimiter;
 
-        [Property("Direction Antichatter Inner"), DefaultPropertyValue(0f), ToolTip
+        [Property("DAC Toggle"), DefaultPropertyValue(true), ToolTip
+        (
+            "Filter template:\n\n" +
+            "A property that appear as an input box.\n\n" +
+            "Has a numerical value."
+        )]
+        public bool dacToggle { 
+            set => _dacToggle = value;
+            get => _dacToggle;
+        }
+        public bool _dacToggle;
+
+        [Property("DAC Inner"), DefaultPropertyValue(0f), ToolTip
         (
             "Filter template:\n\n" +
             "A property that appear as an input box.\n\n" +
@@ -40,7 +64,7 @@ namespace Plugin260112
         }
         public float _dacInner;
 
-        [Property("Direction Antichatter Outer"), DefaultPropertyValue(1f), ToolTip
+        [Property("DAC Outer"), DefaultPropertyValue(1f), ToolTip
         (
             "Filter template:\n\n" +
             "A property that appear as an input box.\n\n" +
@@ -51,6 +75,30 @@ namespace Plugin260112
             get => _dacOuter;
         }
         public float _dacOuter;
+
+        [Property("LD Toggle"), DefaultPropertyValue(true), ToolTip
+        (
+            "Filter template:\n\n" +
+            "A property that appear as an input box.\n\n" +
+            "Has a numerical value."
+        )]
+        public bool ldToggle { 
+            set => _ldToggle = value;
+            get => _ldToggle;
+        }
+        public bool _ldToggle;
+
+        [Property("LD Outer"), DefaultPropertyValue(50f), ToolTip
+        (
+            "Filter template:\n\n" +
+            "A property that appear as an input box.\n\n" +
+            "Has a numerical value."
+        )]
+        public float ldOuter { 
+            set => _ldOuter = MathF.Max(value, 0.1f);
+            get => _ldOuter;
+        }
+        public float _ldOuter;
 
         public event Action<IDeviceReport> Emit;
 
@@ -90,6 +138,9 @@ namespace Plugin260112
          //       testOutput += testDir;
          //       if (emergency)
           //      testOutput = pos0;
+                if (!vtToggle) {
+                    UpdateState();
+                }
             }
             else OnEmit();
         }
@@ -98,6 +149,7 @@ namespace Plugin260112
         {
             if (State is ITabletReport report && PenIsInRange())
             {
+                if (vtToggle) {
                 if (consume) {
                 alpha1 = 0;
                 // Console.WriteLine("-- Consume");
@@ -108,7 +160,7 @@ namespace Plugin260112
                 }
                 else top = 0;
 
-                consume = false;
+                
                 }
 
                 float ohmygodbruh = (float)(reportStopwatch.Elapsed.TotalSeconds * Frequency / reportMsAvg) * (1000 / Frequency);
@@ -124,6 +176,15 @@ namespace Plugin260112
                 testDir = Trajectory(stdir0, stdir1, stdir2, alpha0) / reportMsAvg;
                 sdirt1 = Trajectory(a1stdir0, a1stdir1, a1stdir2, alpha0 + 0.5f) / reportMsAvg;
                 testDir = Vector2.Lerp(testDir, sdirt1, pps3);
+                }
+                else {
+                    if (consume) {
+                        testDir = stdir0;
+                    }
+                    else { 
+                        testDir = Vector2.Zero;
+                    }
+                }
 
                 testOutput += testDir;
 
@@ -137,8 +198,9 @@ namespace Plugin260112
                 }
 
                 report.Position = testOutput;
+                consume = false;
                 //Plot();
-                //Console.WriteLine(alpha0);
+                //Console.WriteLine(pathpreservationsociety);
                 OnEmit();
             }
         }
@@ -177,21 +239,27 @@ namespace Plugin260112
             pathpreservationsociety = MathF.Min(MathF.Min(vel0, vel1), vel2);
             pathpreservationsociety = 2 + (vtlimiter - 2) * FSmoothstep(pathpreservationsociety, 0, 20);
             pps2Dir = (dir0 + dir1) - (dir2 + dir2);
-            pps2 = 2 + (vtlimiter - 2) * 0.5f * FSmoothstep(pps2Dir.Length(), 0, 15) + (vtlimiter - 2) * 0.5f * FSmoothstep(pps2Dir.Length(), 15, 45);
+            pps2 = 2 + (vtlimiter - 2) * FSmoothstep(pps2Dir.Length(), 0, 15);
             pathpreservationsociety = Math.Min(pathpreservationsociety, pps2);
-            pps3 = FSmoothstep(dir3.Length() - dir0.Length(), -20, 0) - FSmoothstep(dir3.Length() - dir0.Length(), 0, 20);
+            pps3 = FSmoothstep(dir3.Length() - dir0.Length(), -15, 0) - FSmoothstep(dir3.Length() - dir0.Length(), 0, 15);
             
         }
 
         void DAC() {
-            float scale = FSmootherstep(Vector2.Distance(stdir0, dir0), Math.Max(0, FSmoothstep(vel0, 0, 25) * dacInner), 0.01f + (FSmoothstep(vel0, 0, 25) * dacOuter));
-            stdir0 = Vector2.Lerp(stdir0, dir0, scale);
-            if (vel0 >= 1 && vel1 >= 1 && vel0 < 100) {
-                stdir0 = Vector2.Lerp(stdir0, stdir1.Length() * Vector2.Normalize(stdir0), FSmootherstep(vel0, 5, 25) * (1 - scale) * (FSmootherstep(stdir0.Length() - stdir1.Length(), -3, 0) - FSmoothstep(stdir0.Length() - stdir1.Length(), 0, 3)));
+            if (dacToggle) {
+                float scale = FSmootherstep(Vector2.Distance(stdir0, dir0), Math.Max(0, FSmoothstep(vel0, 0, 25) * dacInner), 0.01f + (FSmoothstep(vel0, 0, 25) * dacOuter));
+                stdir0 = Vector2.Lerp(stdir0, dir0, scale);
+                if (vel0 >= 1 && vel1 >= 1 && vel0 < 100) {
+                    stdir0 = Vector2.Lerp(stdir0, stdir1.Length() * Vector2.Normalize(stdir0), FSmootherstep(vel0, 5, 25) * (1 - scale) * (FSmootherstep(stdir0.Length() - stdir1.Length(), -3, 0) - FSmoothstep(stdir0.Length() - stdir1.Length(), 0, 3)));
+                }
+            }
+            else {
+                stdir0 = dir0;
             }
         }
 
         void LineDrive() {
+            if (ldToggle) {
             if (clusterjumping && accel0 < 0 & namelesstime1 > 6) {
                 linedrivetime = Math.Min(linedrivetime + 1, namelesstime1);
                 float scale1 = MathF.Pow(Math.Max(0.1f, Vector2.Dot(Vector2.Normalize(stdir0 - clusterdir1), Vector2.Normalize(Vector2.Zero - clusterdir1))), 3);
@@ -200,14 +268,14 @@ namespace Plugin260112
                     dist = Vector2.Zero;
                 }
                 float scale2 = dist.Length() / scale1;
-                float scale3 = Math.Min(vel0 / 10, 1) * FSmoothstep(scale2, 100, 0);
+                float scale3 = Math.Min(vel0 / 10, 1) * FSmoothstep(scale2, ldOuter, 0);
                 stdir0 -= dist * scale3;
                 sense = dist;
-               
             }
             else {
                 linedrivetime = 1;
                 sense = Vector2.Zero;
+            }
             }
         }
 
