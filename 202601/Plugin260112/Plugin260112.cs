@@ -129,7 +129,7 @@ namespace Plugin260112
 
                 if (!emergency) {
                     testOutput = Vector2.Lerp(testOutput, pos0 + stdir0 + (stdir0 - stdir1), 0.025f);
-                    testOutput = Vector2.Lerp(testOutput, pos0, FSmootherstep(accel0, 0, -100));
+                    testOutput = Vector2.Lerp(testOutput, pos0, MathF.Cbrt(FSmootherstep(accel0, 0, -100)));
                 }
 
                 if (!vec2IsFinite(testOutput)) {
@@ -190,30 +190,36 @@ namespace Plugin260112
         void LineDrive() {
             if (clusterjumping && accel0 < 0 & namelesstime1 > 6) {
                 linedrivetime = Math.Min(linedrivetime + 1, namelesstime1);
-                float scale1 = Math.Max(0.1f, Vector2.Dot(Vector2.Normalize(stdir0 - clusterdir1), Vector2.Normalize(Vector2.Zero - clusterdir1)));
-                Vector2 dist = ctozero.DirtyCurveDistanceToPoint(stdir0, (Vector2.Lerp(clusterdir1, Vector2.Zero, 0.5f) + arc), Line.SelfSmootherstep(linedrivetime), Line.SelfSmootherstep(linedrivetime + 2 / namelesstime1));
+                float scale1 = MathF.Pow(Math.Max(0.1f, Vector2.Dot(Vector2.Normalize(stdir0 - clusterdir1), Vector2.Normalize(Vector2.Zero - clusterdir1))), 1);
+                Vector2 dist = ctozero.SegmentDistanceToPoint(stdir0, Line.SelfSmoothstep((linedrivetime - 1) / namelesstime1), Line.SelfSmoothstep((linedrivetime + 1) / namelesstime1));
+                if (!vec2IsFinite(dist)) {
+                    dist = Vector2.Zero;
+                }
                 float scale2 = dist.Length() / scale1;
                 float scale3 = Math.Max(vel0 / 10, 1) * FSmoothstep(scale2, 20, 0);
                 stdir0 -= dist * scale3;
-                Console.WriteLine(dist);
+                 Console.WriteLine(dist * scale3);
+               
             }
-            else linedrivetime = 0;
+            else linedrivetime = 1;
         }
 
 
 
         void ConditionalUpdate() {
-            if (pointaccel0 > 6 && !(accel0 > 0 && accel1 < 0) && !(accel0 < 0 && accel1 > 0)) {
+            if (pointaccel0 > 4 && !(accel0 > 0 && accel1 < 0) && !(accel0 < 0 && accel1 > 0)) {
                 if (!clusterjumping) {
                     clusterpos1 = clusterpos0;
                     clusterdir1 = clusterdir0;
+                    ctozero = new Line(clusterdir1, Vector2.Zero, namelesstime1);
                     clusterjumping = true;
                 }
                 namelesstime0++;
-                ctozero = new Line(clusterdir1, Vector2.Zero, namelesstime1);
+                
             }
             else {
                 clusterpos0 = pos0;
+                namelesstime1 = namelesstime0;
                 clusterdir0 = stdir0;
                 clusterjumping = false;
                 namelesstime0 = 1;
@@ -233,6 +239,7 @@ namespace Plugin260112
             if (accel1 > 0 && accel0 < 0) {
                 arc = (dir0 - dir2) / 2;
             }
+            
         }
 
         void Plot() {
