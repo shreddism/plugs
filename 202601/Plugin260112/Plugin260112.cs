@@ -23,31 +23,31 @@ namespace Plugin260112
             "Has a numerical value."
         )]
         public float vtlimiter { 
-            set => _vtlimiter = (float)Math.Clamp(value, 2.5f, 3.0f);
+            set => _vtlimiter = (float)Math.Clamp(value, 2.0f, 3.0f);
             get => _vtlimiter;
         }
         public float _vtlimiter;
 
-        [Property("Direction Antichatter Inner"), DefaultPropertyValue(1f), ToolTip
+        [Property("Direction Antichatter Inner"), DefaultPropertyValue(0f), ToolTip
         (
             "Filter template:\n\n" +
             "A property that appear as an input box.\n\n" +
             "Has a numerical value."
         )]
         public float dacInner { 
-            set => _dacInner = value;
+            set => _dacInner = Math.Clamp(value, 0, _dacOuter);
             get => _dacInner;
         }
         public float _dacInner;
 
-        [Property("Direction Antichatter Outer"), DefaultPropertyValue(5f), ToolTip
+        [Property("Direction Antichatter Outer"), DefaultPropertyValue(1f), ToolTip
         (
             "Filter template:\n\n" +
             "A property that appear as an input box.\n\n" +
             "Has a numerical value."
         )]
         public float dacOuter { 
-            set => _dacOuter = value;
+            set => _dacOuter = MathF.Max(value, 0.1f);
             get => _dacOuter;
         }
         public float _dacOuter;
@@ -137,6 +137,7 @@ namespace Plugin260112
                 }
 
                 report.Position = testOutput;
+                Plot();
                 OnEmit();
             }
         }
@@ -190,18 +191,21 @@ namespace Plugin260112
         void LineDrive() {
             if (clusterjumping && accel0 < 0 & namelesstime1 > 6) {
                 linedrivetime = Math.Min(linedrivetime + 1, namelesstime1);
-                float scale1 = MathF.Pow(Math.Max(0.1f, Vector2.Dot(Vector2.Normalize(stdir0 - clusterdir1), Vector2.Normalize(Vector2.Zero - clusterdir1))), 1);
+                float scale1 = MathF.Pow(Math.Max(0.1f, Vector2.Dot(Vector2.Normalize(stdir0 - clusterdir1), Vector2.Normalize(Vector2.Zero - clusterdir1))), 3);
                 Vector2 dist = ctozero.SegmentDistanceToPoint(stdir0, Line.SelfSmoothstep((linedrivetime - 1) / namelesstime1), Line.SelfSmoothstep((linedrivetime + 1) / namelesstime1));
                 if (!vec2IsFinite(dist)) {
                     dist = Vector2.Zero;
                 }
                 float scale2 = dist.Length() / scale1;
-                float scale3 = Math.Max(vel0 / 10, 1) * FSmoothstep(scale2, 20, 0);
+                float scale3 = Math.Min(vel0 / 10, 1) * FSmoothstep(scale2, 100, 0);
                 stdir0 -= dist * scale3;
-                 Console.WriteLine(dist * scale3);
+                sense = dist;
                
             }
-            else linedrivetime = 1;
+            else {
+                linedrivetime = 1;
+                sense = Vector2.Zero;
+            }
         }
 
 
@@ -246,15 +250,15 @@ namespace Plugin260112
             Console.Write("vx");
             Console.WriteLine(dir0.X);
             Console.Write("vy");
-            Console.WriteLine(dir0.Y * -1);
-            Console.Write("ax");
-            Console.WriteLine(testDir.X);
-            Console.Write("ay");
-            Console.WriteLine(testDir.Y * -1);
+            Console.WriteLine((dir0.Y * -1));
             Console.Write("jx");
-            Console.WriteLine(clusterdir1.X);
+            Console.WriteLine(stdir0.X);
             Console.Write("jy");
-            Console.WriteLine(clusterdir1.Y * -1);
+            Console.WriteLine(stdir0.Y * -1);
+            Console.Write("sx");
+            Console.WriteLine(sense.X);
+            Console.Write("sy");
+            Console.WriteLine(sense.Y * -1);
             Console.WriteLine("xx");
             Console.WriteLine("dd");
         }
@@ -402,6 +406,7 @@ namespace Plugin260112
         Vector2 pps2Dir;
         float pathpreservationsociety, pps2, pps3;
         bool consume;
+        Vector2 sense;
         private bool vec2IsFinite(Vector2 vec) => float.IsFinite(vec.X) & float.IsFinite(vec.Y);
     }
 }
