@@ -118,8 +118,8 @@ namespace LineSkeleton
             }
 
             public Vector2 DirtyCurveDistanceToPoint(Vector2 p, Vector2 c, float t1, float t2) {
-                Vector2 ss = Curve(c, t1);
-                Vector2 se = Curve(c, t2);
+                Vector2 ss = Curve(c, t1 * 2);
+                Vector2 se = Curve(c, t2 * 2);
                 Vector2 mp = p - ss;
                 Vector2 me = se - ss;
                 return DTP(mp, me);
