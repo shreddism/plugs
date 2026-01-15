@@ -264,7 +264,7 @@ namespace Plugin260115
             if (clusterjumping && accel0 < 0 && namelesstime1 > 6 && peakAccel1 > 25) {
                 linedrivetime = Math.Min(linedrivetime + 1, namelesstime1);
                 float scale1 = MathF.Pow(Math.Max(0.01f, Vector2.Dot(Vector2.Normalize(trDir - clusterdir1), Vector2.Normalize(Vector2.Zero - clusterdir1))), 10);
-                Vector2 dist = ctozero.SegmentDistanceToPoint(trDir, Line.SelfSmoothstep((linedrivetime - 0.5f) / namelesstime1), Line.SelfSmoothstep((linedrivetime + 0.5f) / namelesstime1));
+                Vector2 dist = ctozero.SegmentDistanceToPoint(trDir, Line.SelfSmoothstep((linedrivetime + (vtlimiter - 3)) / namelesstime1), Line.SelfSmoothstep((linedrivetime + (vtlimiter - 2)) / namelesstime1));
                 if (!vec2IsFinite(dist)) {
                     dist = Vector2.Zero;
                 }
