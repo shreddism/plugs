@@ -200,7 +200,7 @@ namespace Plugin260115
 
                 report.Position = testOutput;
                 consume = false;
-                Plot();
+                //Plot();
                 //Console.WriteLine(pathpreservationsociety);
                 OnEmit();
             }
