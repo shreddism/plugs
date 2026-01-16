@@ -240,7 +240,7 @@ namespace Plugin260115
             pathpreservationsociety = MathF.Min(MathF.Min(stdir0.Length(), stdir1.Length()), stdir2.Length());
             pathpreservationsociety = 2 + (vtlimiter - 2) * FSmoothstep(pathpreservationsociety, 0, 20);
             pps2Dir = (stdir0 + stdir1) - (stdir2 + stdir2);
-            pps2 = 2 + (vtlimiter - 2) * FSmoothstep(pps2Dir.Length(), 0, 15) * FSmoothstep(accel0, 100, 50);
+            pps2 = 2 + (vtlimiter - 2) * FSmoothstep(pps2Dir.Length(), 0, 15);
             pathpreservationsociety = Math.Min(pathpreservationsociety, pps2);
             pps3 = FSmoothstep(stdir3.Length() - stdir0.Length(), -15, 0) - FSmoothstep(stdir3.Length() - stdir0.Length(), 0, 15);
             
