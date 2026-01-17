@@ -28,14 +28,11 @@ namespace OTDPlot
 
                 dir0 = pos0 - pos1;
 
-                output = 0.9f * output + 0.1f * dir0;
-
-
-                Console.Write("ax");
+                Console.Write("vx");
 
                 Console.WriteLine(dir0.X);
 
-                Console.Write("ay");
+                Console.Write("vy");
 
                 Console.WriteLine(dir0.Y * -1);
 
