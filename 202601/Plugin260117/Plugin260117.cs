@@ -259,8 +259,8 @@ namespace Plugin260117
                 float scale = FSmootherstep(MathF.Max(pointaccel0, Vector2.Distance(stdir0, dir0)), Math.Max(0, vscale * dacInner), 0.01f + (vscale * dacOuter));
                 stdir0 = Vector2.Lerp(stdir0, dir0, scale);
                 if (vel0 >= 1 && vel1 >= 1 && vel0 < 100) {
-                    float ascale = MathF.Max(accel0, stdir0.Length() - stdir1.Length());
-                    stdir0 = Vector2.Lerp(stdir0, stdir1.Length() * Vector2.Normalize(stdir0), vscale * (1 - scale) * (FSmootherstep(ascale, -dacOuter, 0) - FSmoothstep(ascale, -dacOuter, 3)));
+                    float ascale = MathF.Max(Math.Abs(accel0), Math.Abs(stdir0.Length() - stdir1.Length()));
+                    stdir0 = Vector2.Lerp(stdir0, stdir1.Length() * Vector2.Normalize(stdir0), vscale * (1 - scale) * (FSmoothstep(ascale, 0, dacOuter)));
                 }
             }
             else {
