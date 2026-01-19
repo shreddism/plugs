@@ -143,10 +143,31 @@ namespace Plugin260117
                 }
 
             }
+            else if (State is IAuxReport auxReport) {
+                perfStopwatch.Restart();
+                for (int t = 0; t < 10000; t++) {
+                Vector2 tPoint = new Vector2(aaar.Next(1000), aaar.Next(1000));
+                Vector2[] test = new Vector2[TEST_SIZE];
+                for (int i = 0; i < TEST_SIZE; i++) {
+                    test[i].X = MathF.Pow(i, 2);
+                    test[i].Y = MathF.Pow(2, i);
+                }
+                Line[] testlines = new Line[TEST_SIZE];
+                float xd = 0;
+                for (int i = 0; i < TEST_SIZE; i++) {
+                    testlines[i] = new Line(test[i], Vector2.Zero, i);
+                    xd += testlines[i].DirtyCurveDistanceToPoint(tPoint, tPoint, 0.25f, 0.75f).Length();
+                }
+                }
+                Console.WriteLine(perfStopwatch.Restart().TotalMicroseconds);
+            }
             else {
                 OnEmit();
             } 
         }
+
+        const int TEST_SIZE = 64;
+        Random aaar = new Random();
 
         protected override void UpdateState()   // Interpolation
         {
@@ -162,8 +183,6 @@ namespace Plugin260117
                     bottom = 0;
                 }
                 else top = 0;
-
-                
                 }
 
                 float ohmygodbruh = (float)(reportStopwatch.Elapsed.TotalSeconds * Frequency / reportMsAvg) * (1000 / Frequency);
@@ -339,9 +358,9 @@ namespace Plugin260117
             Console.Write("vy");
             Console.WriteLine((dir0.Y * -1) / reportMsAvg);
             Console.Write("jx");
-            Console.WriteLine(testDir.X);
+            Console.WriteLine(arc.X);
             Console.Write("jy");
-            Console.WriteLine(testDir.Y * -1);
+            Console.WriteLine(arc.Y * -1);
             Console.Write("sx");
             Console.WriteLine(sense.X);
             Console.Write("sy");
@@ -353,22 +372,18 @@ namespace Plugin260117
         public static float FSmoothstep(float x, float start, float end)
         {
             x = (float)Math.Clamp((x - start) / (end - start), 0.0, 1.0);
-
             return x * x * (3 - 2 * x);
         }
 
         public static float FSmootherstep(float x, float start, float end)
         {
             x = (float)Math.Clamp((x - start) / (end - start), 0.0, 1.0);
-
             return (float)(x * x * x * (x * (6.0 * x - 15.0) + 10.0));
         }
 
         public static float ClampedLerp(float start, float end, float scale)
         {
-            scale = (float)Math.Clamp(scale, 0, 1);
-
-            return start + scale * (end - start);
+            return start + (float)Math.Clamp(scale, 0, 1) * (end - start);
         }
 
         public static Vector2 Trajectory(Vector2 p0, Vector2 p1, Vector2 p2, float t) {
@@ -377,6 +392,11 @@ namespace Plugin260117
             Vector2 tVel = (2 * p1) - p2 - tMid;
             return p2 + t * tVel + 0.5f * t * t * tAccel;
         }
+
+       /*  public static Vector2 Trajectory(Vector2 p0, Vector2 p1, Vector2 p2, float t) {
+            Vector2 tMid = 0.5f * (p0 + p2);
+            return p2 + t * ((2 * p1) - p2 - tMid) + 0.5f * t * t * (2 * (tMid - p1));
+        } */
 
         public class Line {
             public Vector2 Start;
@@ -389,12 +409,18 @@ namespace Plugin260117
                 Time = t;
             }
 
-            public static Vector2 Rotate(Vector2 p, float a) {
+            /* public static Vector2 Rotate(Vector2 p, float a) {
                 Vector2 sp = p;
                 Vector2 rp;
                 rp.X = (MathF.Cos(a) * sp.X) - (MathF.Sin(a) * sp.Y);
                 rp.Y = (MathF.Sin(a) * sp.X) + (MathF.Cos(a) * sp.Y);
                 return rp;
+            } */
+
+           public static Vector2 Rotate(Vector2 p, float a) {
+                float cosine = MathF.Cos(a);
+                float sine = MathF.Sin(a);
+                return new Vector2((cosine * p.X) - (sine * p.Y), (sine * p.X) + (cosine * p.Y));
             }
 
             public void Step(float t) {
@@ -403,11 +429,16 @@ namespace Plugin260117
                 End += ldir;
             }
 
-            public Vector2 Curve(Vector2 p1, float t) {
+            /* public Vector2 Curve(Vector2 p1, float t) {
                 Vector2 tMid = 0.5f * (End + Start);
                 Vector2 tAccel = 2 * (tMid - p1);
                 Vector2 tVel = (2 * p1) - End - tMid;
                 return End + t * tVel + 0.5f * t * t * tAccel;
+            } */
+
+            public Vector2 Curve(Vector2 p1, float t) {
+                Vector2 tMid = 0.5f * (End + Start);
+                return End + t * ((2 * p1) - End - tMid) + 0.5f * t * t * (2 * (tMid - p1));
             }
 
             public static float SelfSmoothstep(float x) {
@@ -426,7 +457,7 @@ namespace Plugin260117
 
             public Vector2 DTP(Vector2 mp, Vector2 me) {
                 float a = MathF.Atan2(me.Y, me.X);
-                float ca = -1 * MathF.Atan2(me.Y, me.X);
+                float ca = -1 * a;
                 Vector2 rp = Rotate(mp, ca);
                 Vector2 re = Rotate(me, ca);
                 if (rp.X < 0)
@@ -438,7 +469,7 @@ namespace Plugin260117
                     return Rotate(rp, a);
                 }
             }
-            
+
             public Vector2 FullDistanceToPoint(Vector2 p) {
                 Vector2 mp = p - Start;
                 Vector2 me = End - Start;
@@ -451,7 +482,7 @@ namespace Plugin260117
                 Vector2 mp = p - ss;
                 Vector2 me = se - ss;
                 return DTP(mp, me);
-            }
+            } 
 
             public Vector2 DirtyCurveDistanceToPoint(Vector2 p, Vector2 c, float t1, float t2) {
                 Vector2 ss = Curve(c, t1 * 2);
@@ -460,6 +491,20 @@ namespace Plugin260117
                 Vector2 me = se - ss;
                 return DTP(mp, me);
             }
+
+            /* public Vector2 FullDistanceToPoint(Vector2 p) {
+                return DTP(p - Start, End - Start);
+            }
+
+            public Vector2 SegmentDistanceToPoint(Vector2 p, float t1, float t2) {
+                Vector2 ss = Vector2.Lerp(Start, End, t1);
+                return DTP(p - ss, Vector2.Lerp(Start, End, t2) - ss);
+            } 
+
+            public Vector2 DirtyCurveDistanceToPoint(Vector2 p, Vector2 c, float t1, float t2) {
+                Vector2 ss = Curve(c, t1 * 2);
+                return DTP(p - ss, Curve(c, t2 * 2) - ss);
+            } */
         }
 
         
