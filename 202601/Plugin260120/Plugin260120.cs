@@ -5,12 +5,12 @@ using OpenTabletDriver.Plugin.Output;
 using OpenTabletDriver.Plugin.Tablet;
 using OpenTabletDriver.Plugin.Timing;       
 
-namespace Plugin260117
+namespace Plugin260120
 {
-    [PluginName("Plugin260117")]
-    public class Plugin260117 : AsyncPositionedPipelineElement<IDeviceReport>
+    [PluginName("Plugin260120")]
+    public class Plugin260120 : AsyncPositionedPipelineElement<IDeviceReport>
     {
-        public Plugin260117() : base()
+        public Plugin260120() : base()
         {
         }
 
@@ -173,7 +173,8 @@ namespace Plugin260117
         {
             if (State is ITabletReport report && PenIsInRange())
             {
-             //   perfStopwatch.Restart();
+               // perfStopwatch.Restart();
+
                 if (vtToggle) {
                 if (consume) {
                 alpha1 = 0;
@@ -185,6 +186,8 @@ namespace Plugin260117
                 }
                 else top = 0;
                 }
+                
+                
 
                 float ohmygodbruh = (float)(reportStopwatch.Elapsed.TotalSeconds * Frequency / reportMsAvg) * (1000 / Frequency);
 
@@ -203,13 +206,16 @@ namespace Plugin260117
                 }
                 else {
                     if (consume) {
+                        
                         testDir = stdir0;
+
                     }
                     else { 
                         testDir = Vector2.Zero;
                     }
                 }
 
+                
                 testOutput += testDir;
 
                 if (!emergency && !liftorpress && vec2IsFinite(testOutput)) {
@@ -221,9 +227,11 @@ namespace Plugin260117
                 consume = false;
                 //Plot();
                 //Console.WriteLine(pathpreservationsociety);
-          //      Console.WriteLine(perfStopwatch.Restart().TotalMicroseconds);
+               // Console.WriteLine(perfStopwatch.Restart().TotalMicroseconds);
                 OnEmit();
+                
                 //Console.WriteLine(vel0);
+                
             }
         }
 
@@ -294,14 +302,17 @@ namespace Plugin260117
             if (clusterjumping && accel0 < 0 && namelesstime1 > 6 && peakAccel1 > 25) {
                 linedrivetime = Math.Min(linedrivetime + 1, namelesstime1);
                 float scale1 = MathF.Pow(Math.Max(0.01f, Vector2.Dot(Vector2.Normalize(trDir - clusterdir1), Vector2.Normalize(Vector2.Zero - clusterdir1))), 10);
-                Vector2 dist = ctozero.SegmentDistanceToPoint(trDir, Line.SelfSmoothstep((linedrivetime + (vtlimiter - 3)) / namelesstime1), Line.SelfSmoothstep((linedrivetime + (vtlimiter - 2)) / namelesstime1));
+                float time1 = Line.SelfSmoothstep((linedrivetime + (vtlimiter - 3)) / namelesstime1);
+                float time2 = Line.SelfSmoothstep((linedrivetime + (vtlimiter - 2)) / namelesstime1);
+                Vector2 dist = ctozero.SegmentDistanceToPoint(trDir, time1, time2);
                 if (!vec2IsFinite(dist)) {
                     dist = Vector2.Zero;
                 }
-                float scale2 = dist.Length() / scale1;
+                float scale2 = (dist.Length() / scale1) / (1 / (1 + MathF.Log(ctozero.SegmentPerpendicularDistanceL(trDir, time1, time2) + 1)));
                 float scale3 = Math.Min(vel0 / 10, 1) * FSmoothstep(scale2, ldOuter, 0);
                 testDir = trDir - dist * scale3;
                 sense = dist;
+            //    Console.WriteLine(ctozero.SegmentPerpendicularDistanceL(trDir, time1, time2));
             }
             else {
                 linedrivetime = 1;
@@ -390,13 +401,6 @@ namespace Plugin260117
 
         public static Vector2 Trajectory(Vector2 p0, Vector2 p1, Vector2 p2, float t) {
             Vector2 tMid = 0.5f * (p0 + p2);
-            Vector2 tAccel = 2 * (tMid - p1);
-            Vector2 tVel = (2 * p1) - p2 - tMid;
-            return p2 + t * tVel + 0.5f * t * t * tAccel;
-        }
-
-        public static Vector2 Trajectory2(Vector2 p0, Vector2 p1, Vector2 p2, float t) {
-            Vector2 tMid = 0.5f * (p0 + p2);
             return p2 + t * ((2 * p1) - p2 - tMid) + 0.5f * t * t * (2 * (tMid - p1));
         } 
 
@@ -412,18 +416,10 @@ namespace Plugin260117
             }
 
             public static Vector2 Rotate(Vector2 p, float a) {
-                Vector2 sp = p;
-                Vector2 rp;
-                rp.X = (MathF.Cos(a) * sp.X) - (MathF.Sin(a) * sp.Y);
-                rp.Y = (MathF.Sin(a) * sp.X) + (MathF.Cos(a) * sp.Y);
-                return rp;
-            } 
-
-           /* public static Vector2 Rotate(Vector2 p, float a) {
                 float cosine = MathF.Cos(a);
                 float sine = MathF.Sin(a);
                 return new Vector2((cosine * p.X) - (sine * p.Y), (sine * p.X) + (cosine * p.Y));
-            } */
+            }
 
             public void Step(float t) {
                 Vector2 ldir = ((Start - End) / Time) * t;
@@ -433,15 +429,8 @@ namespace Plugin260117
 
             public Vector2 Curve(Vector2 p1, float t) {
                 Vector2 tMid = 0.5f * (End + Start);
-                Vector2 tAccel = 2 * (tMid - p1);
-                Vector2 tVel = (2 * p1) - End - tMid;
-                return End + t * tVel + 0.5f * t * t * tAccel;
-            }
-
-            /* public Vector2 Curve(Vector2 p1, float t) {
-                Vector2 tMid = 0.5f * (End + Start);
                 return End + t * ((2 * p1) - End - tMid) + 0.5f * t * t * (2 * (tMid - p1));
-            }  */
+            } 
 
             public static float SelfSmoothstep(float x) {
                 x = Math.Clamp(x, 0, 1);
@@ -457,44 +446,45 @@ namespace Plugin260117
                 
             public float ASSRSS(float x) => SelfSmootherstep(x + 1 / Time);
 
-            public Vector2 DTP(Vector2 mp, Vector2 me) {
+            public static Vector2 DTP(Vector2 mp, Vector2 me) {
                 float a = MathF.Atan2(me.Y, me.X);
-                float ca = -1 * a;
+                float ca = -a;
                 Vector2 rp = Rotate(mp, ca);
                 Vector2 re = Rotate(me, ca);
-                if (rp.X < 0)
-                return Rotate(rp, a);
-                else if (rp.X > re.X)
-                return Rotate(rp - re, a);
-                else {
-                    rp.X = 0;
-                    return Rotate(rp, a);
-                }
+                if (rp.X < 0f) return mp;
+                else if (rp.X > re.X) return Rotate(rp - re, a);
+                else return Rotate(new Vector2(0f, rp.Y), a);
+            }
+
+            public static float DTPL(Vector2 mp, Vector2 me) {
+                float ca = -MathF.Atan2(me.Y, me.X);
+                Vector2 rp = Rotate(mp, ca);
+                Vector2 re = Rotate(me, ca);
+                if (rp.X < 0f) return rp.Length();
+                else if (rp.X > re.X) return (rp - re).Length();
+                else return rp.Y;
+            }
+
+            public static Vector2 PD(Vector2 mp, Vector2 me) {
+                float a = MathF.Atan2(me.Y, me.X);
+                float ca = -a;
+                Vector2 rp = Rotate(mp, ca);
+                Vector2 re = Rotate(me, ca);
+                if (rp.X < 0f) return Rotate(new Vector2(rp.X, 0f), a);
+                else if (rp.X > re.X) return Rotate(new Vector2(rp.X - re.X, 0f), a);
+                else return Vector2.Zero;
+            }
+
+            public static float PDL(Vector2 mp, Vector2 me) {
+                float ca = -MathF.Atan2(me.Y, me.X);
+                Vector2 rp = Rotate(mp, ca);
+                Vector2 re = Rotate(me, ca);
+                if (rp.X < 0f) return rp.X;
+                else if (rp.X > re.X) return rp.X - re.X;
+                else return 0f;
             }
 
             public Vector2 FullDistanceToPoint(Vector2 p) {
-                Vector2 mp = p - Start;
-                Vector2 me = End - Start;
-                return DTP(mp, me);
-            }
-
-            public Vector2 SegmentDistanceToPoint(Vector2 p, float t1, float t2) {
-                Vector2 ss = Vector2.Lerp(Start, End, t1);
-                Vector2 se = Vector2.Lerp(Start, End, t2);
-                Vector2 mp = p - ss;
-                Vector2 me = se - ss;
-                return DTP(mp, me);
-            } 
-
-            public Vector2 DirtyCurveDistanceToPoint(Vector2 p, Vector2 c, float t1, float t2) {
-                Vector2 ss = Curve(c, t1 * 2);
-                Vector2 se = Curve(c, t2 * 2);
-                Vector2 mp = p - ss;
-                Vector2 me = se - ss;
-                return DTP(mp, me);
-            } 
-
-            /* public Vector2 FullDistanceToPoint(Vector2 p) {
                 return DTP(p - Start, End - Start);
             }
 
@@ -508,7 +498,55 @@ namespace Plugin260117
                 Vector2 ss = Curve(c, t1 * 2);
                 Vector2 se = Curve(c, t2 * 2);
                 return DTP(p - ss, se - ss);
-            }  */
+            } 
+
+            public float FullDistanceToPointL(Vector2 p) {
+                return DTPL(p - Start, End - Start);
+            }
+
+            public float SegmentDistanceToPointL(Vector2 p, float t1, float t2) {
+                Vector2 ss = Vector2.Lerp(Start, End, t1);
+                Vector2 se = Vector2.Lerp(Start, End, t2);
+                return DTPL(p - ss, se - ss);
+            } 
+
+            public float DirtyCurveDistanceToPointL(Vector2 p, Vector2 c, float t1, float t2) {
+                Vector2 ss = Curve(c, t1 * 2);
+                Vector2 se = Curve(c, t2 * 2);
+                return DTPL(p - ss, se - ss);
+            } 
+
+            public Vector2 FullPerpendicularDistance(Vector2 p) {
+                return PD(p - Start, End - Start);
+            }
+
+            public Vector2 SegmentPerpendicularDistance(Vector2 p, float t1, float t2) {
+                Vector2 ss = Vector2.Lerp(Start, End, t1);
+                Vector2 se = Vector2.Lerp(Start, End, t2);
+                return PD(p - ss, se - ss);
+            } 
+
+            public Vector2 DirtyCurvePerpendicularDistance(Vector2 p, Vector2 c, float t1, float t2) {
+                Vector2 ss = Curve(c, t1 * 2);
+                Vector2 se = Curve(c, t2 * 2);
+                return PD(p - ss, se - ss);
+            } 
+
+            public float FullPerpendicularDistanceL(Vector2 p) {
+                return PDL(p - Start, End - Start);
+            }
+
+            public float SegmentPerpendicularDistanceL(Vector2 p, float t1, float t2) {
+                Vector2 ss = Vector2.Lerp(Start, End, t1);
+                Vector2 se = Vector2.Lerp(Start, End, t2);
+                return PDL(p - ss, se - ss);
+            } 
+
+            public float DirtyCurvePerpendicularDistanceL(Vector2 p, Vector2 c, float t1, float t2) {
+                Vector2 ss = Curve(c, t1 * 2);
+                Vector2 se = Curve(c, t2 * 2);
+                return PDL(p - ss, se - ss);
+            } 
         }
 
         
