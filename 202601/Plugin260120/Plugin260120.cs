@@ -312,7 +312,6 @@ namespace Plugin260120
                 float scale3 = Math.Min(vel0 / 10, 1) * FSmoothstep(scale2, ldOuter, 0);
                 testDir = trDir - dist * scale3;
                 sense = dist;
-            //    Console.WriteLine(ctozero.SegmentPerpendicularDistanceL(trDir, time1, time2));
             }
             else {
                 linedrivetime = 1;
@@ -461,7 +460,7 @@ namespace Plugin260120
                 Vector2 rp = Rotate(mp, ca);
                 Vector2 re = Rotate(me, ca);
                 if (rp.X < 0f) return rp.Length();
-                else if (rp.X > re.X) return (rp - re).Length();
+                else if (rp.X > re.X) return Vector2.Distance(rp, re);
                 else return rp.Y;
             }
 
@@ -479,7 +478,7 @@ namespace Plugin260120
                 float ca = -MathF.Atan2(me.Y, me.X);
                 Vector2 rp = Rotate(mp, ca);
                 Vector2 re = Rotate(me, ca);
-                if (rp.X < 0f) return rp.X;
+                if (rp.X < 0f) return -rp.X;
                 else if (rp.X > re.X) return rp.X - re.X;
                 else return 0f;
             }
