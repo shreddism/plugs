@@ -5,12 +5,12 @@ using OpenTabletDriver.Plugin.Output;
 using OpenTabletDriver.Plugin.Tablet;
 using OpenTabletDriver.Plugin.Timing;       
 
-namespace Plugin260120
+namespace Plugin260122
 {
-    [PluginName("Plugin260120")]
-    public class Plugin260120 : AsyncPositionedPipelineElement<IDeviceReport>
+    [PluginName("Plugin260122")]
+    public class Plugin260122 : AsyncPositionedPipelineElement<IDeviceReport>
     {
-        public Plugin260120() : base()
+        public Plugin260122() : base()
         {
         }
 
@@ -100,6 +100,30 @@ namespace Plugin260120
         }
         public float _ldOuter;
 
+        [Property("Stock Weight"), DefaultPropertyValue(0.67f), ToolTip
+        (
+            "Filter template:\n\n" +
+            "A property that appear as an input box.\n\n" +
+            "Has a numerical value."
+        )]
+        public float stockWeight { 
+            set => _stockWeight = (float)Math.Clamp(value, 0.0f, 1.0f);
+            get => _stockWeight;
+        }
+        public float _stockWeight;
+
+        [Property("Dumb Weight (don't touch)"), DefaultPropertyValue(0.05f), ToolTip
+        (
+            "Filter template:\n\n" +
+            "A property that appear as an input box.\n\n" +
+            "Has a numerical value."
+        )]
+        public float dumbWeight { 
+            set => _dumbWeight = (float)Math.Clamp(value, 0.0f, 0.9f);
+            get => _dumbWeight;
+        }
+        public float _dumbWeight;
+
         public event Action<IDeviceReport> Emit;
 
         protected override void ConsumeState()
@@ -115,14 +139,10 @@ namespace Plugin260120
                     emergency = true;
                 }
                 consume = true;
-
-                
                       
                 StatUpdate(report);
                 ConditionalUpdate();
                 
-                
-
                 bottom = -1 * Math.Max(alpha0 - vtlimiter, 0);
 
                 if (top > 0.75f || bottom > 0.75f) {
@@ -130,37 +150,11 @@ namespace Plugin260120
                     bottom = 0;
                 }
 
-                
-               // testDir = stdir0;
-
-              //  Plot();
-
-         //       testOutput += testDir;
-         //       if (emergency)
-          //      testOutput = pos0;
                 if (!vtToggle) {
                     UpdateState();
                 }
 
             }
-            /* else if (State is IAuxReport auxReport) {
-                perfStopwatch.Restart();
-                for (int t = 0; t < 100000; t++) {
-                Vector2 tPoint = new Vector2(aaar.Next(1000), aaar.Next(1000));
-                Vector2[] test = new Vector2[TEST_SIZE];
-                for (int i = 0; i < TEST_SIZE; i++) {
-                    test[i].X = MathF.Pow(i, 2);
-                    test[i].Y = MathF.Pow(2, i);
-                }
-                Line[] testlines = new Line[TEST_SIZE];
-                float xd = 0;
-                for (int i = 0; i < TEST_SIZE; i++) {
-                    testlines[i] = new Line(test[i], Vector2.Zero, i);
-                    xd += testlines[i].DirtyCurveDistanceToPoint(tPoint, tPoint, 0.25f, 0.75f).Length();
-                }
-                }
-                Console.WriteLine(perfStopwatch.Restart().TotalMicroseconds);
-            } */
             else {
                 OnEmit();
             } 
@@ -178,8 +172,7 @@ namespace Plugin260120
                 if (vtToggle) {
                 if (consume) {
                 alpha1 = 0;
-                // Console.WriteLine("-- Consume");
-                // Console.WriteLine(vel0);
+
                 if ((alpha0PreservationSociety > 1) && (top < 1)) {
                     top = alpha0PreservationSociety - 1;
                     bottom = 0;
@@ -187,8 +180,6 @@ namespace Plugin260120
                 else top = 0;
                 }
                 
-                
-
                 float ohmygodbruh = (float)(reportStopwatch.Elapsed.TotalSeconds * Frequency / reportMsAvg) * (1000 / Frequency);
 
                 alpha0 = ((1 - top) * ohmygodbruh) + 1.120f * top;
@@ -206,33 +197,35 @@ namespace Plugin260120
                 }
                 else {
                     if (consume) {
-                        
-                        testDir = stdir0;
-
+                        ldDir = stdir0;
                     }
                     else { 
-                        testDir = Vector2.Zero;
+                        ldDir = Vector2.Zero;
                     }
                 }
 
-                
-                testOutput += testDir;
+                ldOutput += ldDir;
 
-                if (!emergency && !liftorpress && vec2IsFinite(testOutput)) {
-                    testOutput = Vector2.Lerp(testOutput, pos0 + trDir + (trDir - (stdir1 / reportMsAvg)), 0.05f + 0.1f * FSmoothstep(accel0, 0, -200f));
-                    Console.WriteLine(testOutput - pos0);
+
+
+                if (!emergency && !liftorpress && vec2IsFinite(ldOutput + aemaOutput)) {
+                    ldOutput = Vector2.Lerp(ldOutput, pos0 + trDir + (trDir - (stdir1 / reportMsAvg)), dumbWeight);
+                    ldOutput = Vector2.Lerp(ldOutput, pos0, dumbWeight * FSmoothstep(accel0, 0, -200f));
                 }
-                else testOutput = pos0;
+                else {
+                    ldOutput = pos0;
+                    aemaOutput = pos0;
+                } 
 
-                report.Position = testOutput;
+                AEMA();
+
+                report.Position = aemaOutput;
+
+               // Console.WriteLine(Line.PathDiff(pos1, pos0, aemaOutput));
+              //Console.WriteLine(pointaccel0);
                 consume = false;
-                //Plot();
-                //Console.WriteLine(pathpreservationsociety);
-               // Console.WriteLine(perfStopwatch.Restart().TotalMicroseconds);
+            
                 OnEmit();
-                
-                //Console.WriteLine(vel0);
-                
             }
         }
 
@@ -253,12 +246,16 @@ namespace Plugin260120
             dir1 = dir0;
             dir0 = (pos0 - pos1);
 
+            
+
             vel2 = vel1;
             vel1 = vel0;
             vel0 = dir0.Length();
 
             accel1 = accel0;
             accel0 = (vel0 - vel1);
+
+            jerk0 = accel0 - accel1;
 
             ddir1 = ddir0;
             ddir0 = (dir0 - dir1);
@@ -280,6 +277,9 @@ namespace Plugin260120
             pps2 = 2 + (vtlimiter - 2) * FSmoothstep(pps2Dir.Length(), 0, 15);
             pathpreservationsociety = Math.Min(pathpreservationsociety, pps2);
             pps3 = FSmoothstep(stdir3.Length() - stdir0.Length(), -15, 0) - FSmoothstep(stdir3.Length() - stdir0.Length(), 0, 15);
+
+            if (pointaccel0 > 400)
+                pathpreservationsociety = 2;
             
         }
 
@@ -311,19 +311,29 @@ namespace Plugin260120
                 }
                 float scale2 = (dist.Length() / scale1) / (1 / (1 + MathF.Log(ctozero.SegmentPerpendicularDistanceL(trDir, time1, time2) + 1)));
                 float scale3 = Math.Min(vel0 / 10, 1) * FSmoothstep(scale2, ldOuter, 0);
-                testDir = trDir - dist * scale3;
+                ldDir = trDir - dist * scale3;
                 sense = dist;
+                
             }
             else {
                 linedrivetime = 1;
                 sense = Vector2.Zero;
-                testDir = trDir;
+                ldDir = trDir;
             }
             }
-            else testDir = trDir;
+            else ldDir = trDir;
         }
 
-
+        void AEMA() {
+            float mod1 = (1f - stockWeight) * (FSmoothstep(vel0, 25, 75) - FSmoothstep(vel0, 175, 250)) * FSmoothstep(MathF.Abs(accel0), 50, 10);
+            float dist = Vector2.Distance(aemaOutput, ldOutput);
+            float mod2 = mod1 * FSmoothstep(dist, 0, 75);
+            float mod3 = (1f - stockWeight) * FSmoothstep(dist, 0, 100) * FSmoothstep(accel0 - jerk0, -10, -30);
+            float mod4 = stockWeight * FSmoothstep(dist, 200, 0) * FSmoothstep(accel0 + jerk0, 10, 30);
+            float weight = stockWeight + MathF.Max(mod2, mod3) - mod4;
+            aemaOutput = Vector2.Lerp(aemaOutput, ldOutput, weight);
+         //   Console.WriteLine(weight);
+        }
 
         void ConditionalUpdate() {
             if (!(accel0 > 0 && accel1 < 0) && !(accel0 < 0 && accel1 > 0)) {
@@ -547,12 +557,21 @@ namespace Plugin260120
                 Vector2 se = Curve(c, t2 * 2);
                 return PDL(p - ss, se - ss);
             } 
+
+            public static Vector2 PathDiff(Vector2 s, Vector2 e, Vector2 p) {
+                Vector2 mp = p - s;
+                Vector2 me = e - s;
+                float ca = -MathF.Atan2(me.Y, me.X);
+                Vector2 rp = Rotate(mp, ca);
+                Vector2 re = Rotate(me, ca);
+                return rp - re;
+            }
         }
 
         
 
         Vector2 pos0, pos1, pos2, dir0, dir1, dir2, dir3, ddir0, ddir1, planestart, planeend, peak;
-        float vel0, vel1, vel2, accel0, accel1, pointaccel0, pointaccel1;
+        float vel0, vel1, vel2, accel0, accel1, jerk0, pointaccel0, pointaccel1;
         float peakMag, planeMag;
         Vector2 clusterpos0, clusterpos1;
         Vector2 clusterdir0, clusterdir1;
@@ -563,7 +582,9 @@ namespace Plugin260120
         float stmag0, stmag1;
         float reportTime;
         float reportMsAvg = (1 / 303);
-        Vector2 testOutput, testDir;
+        Vector2 trueOutput, trueDir;
+        Vector2 ldDir, ldOutput;
+        Vector2 aemaOutput;
         bool emergency;
         int namelesstime0, namelesstime1;
         float linedrivetime;
