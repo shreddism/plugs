@@ -221,7 +221,7 @@ namespace Plugin260122
 
                 report.Position = aemaOutput;
 
-               // Console.WriteLine(Line.PathDiff(pos1, pos0, aemaOutput));
+                Console.WriteLine(report.Position - pos0);
               //Console.WriteLine(pointaccel0);
                 consume = false;
             
