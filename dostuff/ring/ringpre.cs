@@ -33,7 +33,7 @@ namespace ring
                 Vector2 dist = pos0 - ringPos0;
                 float scale = 1;
 
-                float r = 4;
+                float r = 10;
 
                 ringPos1 = ringPos0;
                 ringPos0 += MathF.Max(0, MathF.Max(dist.Length() - r, 0.0f * (dist.Length() - 500))) * Vector2.Normalize(dist);
