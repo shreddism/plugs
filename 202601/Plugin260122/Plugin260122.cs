@@ -221,8 +221,8 @@ namespace Plugin260122
                 ldOutput += ldDir;
 
                 if (!emergency && !liftorpress && vec2IsFinite(ldOutput + aemaOutput)) {
-                    ldOutput = Vector2.Lerp(ldOutput, pos0 + trDir + (trDir - (stdir1 / reportMsAvg)), dumbWeight);
-                    ldOutput = Vector2.Lerp(ldOutput, pos0, dumbWeight * FSmoothstep(accel0, 0, -200f));
+                    ldOutput = Vector2.Lerp(ldOutput, pos0 + trDir + (trDir - (stdir1 / reportMsAvg) * updateTime / (1000 / Frequency)), dumbWeight);
+                 //  ldOutput = Vector2.Lerp(ldOutput, pos0, dumbWeight * FSmoothstep(accel0, 0, -200f));
                 }
                 else {
                     ldOutput = pos0;
