@@ -232,6 +232,7 @@ namespace Plugin260122
                 AEMA();
 
                 report.Position = aemaOutput;
+                report.Pressure = pressure0;
 
               //  Console.WriteLine(report.Position - pos0);
               //Console.WriteLine(pointaccel0);
@@ -587,6 +588,7 @@ namespace Plugin260122
 
         Vector2 pos0, pos1, pos2, dir0, dir1, dir2, dir3, ddir0, ddir1, planestart, planeend, peak;
         float vel0, vel1, vel2, accel0, accel1, jerk0, pointaccel0, pointaccel1;
+        
         float peakMag, planeMag;
         Vector2 clusterpos0, clusterpos1;
         Vector2 clusterdir0, clusterdir1;
