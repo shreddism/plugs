@@ -7,10 +7,10 @@ using OpenTabletDriver.Plugin.Timing;
 
 namespace ring
 {
-    [PluginName("ring")]
-    public class ring : IPositionedPipelineElement<IDeviceReport>
+    [PluginName("ringpre")]
+    public class ringpre : IPositionedPipelineElement<IDeviceReport>
     {
-        public ring() : base()
+        public ringpre() : base()
         {
         }
 
@@ -24,17 +24,23 @@ namespace ring
             {
                 pos1 = pos0;
                 pos0 = report.Position;
+                dir1 = dir0;
                 dir0 = pos0 - pos1;
+                ddir0 = dir0 - dir1;
                 vel1 = vel0;
                 vel0 = dir0.Length();
                 accel0 = vel0 - vel1;
                 Vector2 dist = pos0 - ringPos0;
                 float scale = 1;
 
+                float r = (3 + (200 * MathF.Max(0, (FSmootherstep(ddir0.Length(), 2f, 10f) * MathF.Max(0.1f, DotNorm(ddir0, dir0))) - FSmootherstep(vel0 - ddir0.Length(), 50, 100))));
+
                 ringPos1 = ringPos0;
-                ringPos0 += MathF.Max(0, MathF.Max(dist.Length() - 100, 0.0f * (dist.Length() - 500))) * Vector2.Normalize(dist);
+                ringPos0 += MathF.Max(0, MathF.Max(dist.Length() - r, 0.0f * (dist.Length() - 500))) * Vector2.Normalize(dist);
 
                 ringDir = ringPos0 - ringPos1;
+
+                
 
                 
                 
@@ -42,7 +48,7 @@ namespace ring
                 outputPos0 += ringDir;
 
                 if (ringDir.Length() > 0)
-                outputPos0 = capDist(outputPos0, Vector2.Lerp(outputPos0, pos0, 0.5f), 5);
+                outputPos0 = capDist(outputPos0, Vector2.Lerp(outputPos0, pos0, 1f), 100);
 
                 
                 
@@ -59,6 +65,8 @@ namespace ring
                     outputPos0 = pos0;
                     ringPos0 = pos0;
                 }
+
+             //   Console.WriteLine(outputPos0 - pos0);
                 
                 report.Position = outputPos0;   
 
@@ -80,9 +88,15 @@ namespace ring
             return start + scale * (end - start);
         }
 
+        float DotNorm(Vector2 a, Vector2 b) {
+            if (a != Vector2.Zero && b != Vector2.Zero)
+                return Vector2.Dot(Vector2.Normalize(a), Vector2.Normalize(b));
+            else return 1;
+        }
+
         Vector2 pos0, pos1, ringPos0, ringPos1, ringDir, outputPos0, outputPos1, outputDir;
 
-        Vector2 dir0;
+        Vector2 dir0, dir1, ddir0;
         float vel0, vel1, accel0;
 
         Vector2 MaxLength(Vector2 a, Vector2 b) => a.Length() >= b.Length() ? a : b;

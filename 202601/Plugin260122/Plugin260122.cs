@@ -124,6 +124,14 @@ namespace Plugin260122
         }
         public float _dumbWeight;
 
+        [Property("wire"), DefaultPropertyValue(true), ToolTip
+        (
+            "Filter template:\n\n" +
+            "A property that appear as an input box.\n\n" +
+            "Has a numerical value."
+        )]
+        public bool wire { set; get; }
+
         public event Action<IDeviceReport> Emit;
 
         protected override void ConsumeState()
@@ -150,7 +158,7 @@ namespace Plugin260122
                     bottom = 0;
                 }
 
-                if (!vtToggle) {
+                if (!vtToggle | wire) {
                     UpdateState();
                 }
 
@@ -168,6 +176,8 @@ namespace Plugin260122
             if (State is ITabletReport report && PenIsInRange())
             {
                // perfStopwatch.Restart();
+
+                updateTime = (float)updateStopwatch.Restart().TotalMilliseconds;
 
                 if (vtToggle) {
                 if (consume) {
@@ -190,9 +200,13 @@ namespace Plugin260122
 
                 alpha0 = Math.Clamp(alpha0, (vtlimiter - 1), pathpreservationsociety);
 
-                trDir = Trajectory(stdir0, stdir1, stdir2, alpha0) / reportMsAvg;
-                sdirt1 = Trajectory(a1stdir0, a1stdir1, a1stdir2, alpha0 + 0.5f) / reportMsAvg;
+                trDir = Trajectory(stdir0, stdir1, stdir2, alpha0) / (reportMsAvg / (1000 / Frequency));
+                sdirt1 = Trajectory(a1stdir0, a1stdir1, a1stdir2, alpha0 + 0.5f) / (reportMsAvg / (1000 / Frequency));
                 trDir = Vector2.Lerp(trDir, sdirt1, pps3);
+                if (wire) {
+                    trDir *= updateTime / (1000 / Frequency);
+                }
+            //    Console.WriteLine(trDir.Length());
                 LineDrive();
                 }
                 else {
@@ -205,8 +219,6 @@ namespace Plugin260122
                 }
 
                 ldOutput += ldDir;
-
-
 
                 if (!emergency && !liftorpress && vec2IsFinite(ldOutput + aemaOutput)) {
                     ldOutput = Vector2.Lerp(ldOutput, pos0 + trDir + (trDir - (stdir1 / reportMsAvg)), dumbWeight);
@@ -221,7 +233,7 @@ namespace Plugin260122
 
                 report.Position = aemaOutput;
 
-                Console.WriteLine(report.Position - pos0);
+              //  Console.WriteLine(report.Position - pos0);
               //Console.WriteLine(pointaccel0);
                 consume = false;
             
@@ -325,12 +337,15 @@ namespace Plugin260122
         }
 
         void AEMA() {
+            float weight = stockWeight;
             float mod1 = (1f - stockWeight) * (FSmoothstep(vel0, 25, 75) - FSmoothstep(vel0, 175, 250)) * FSmoothstep(MathF.Abs(accel0), 50, 10);
             float dist = Vector2.Distance(aemaOutput, ldOutput);
             float mod2 = mod1 * FSmoothstep(dist, 0, 75);
             float mod3 = (1f - stockWeight) * FSmoothstep(dist, 0, 100) * FSmoothstep(accel0 - jerk0, -10, -30);
             float mod4 = stockWeight * FSmoothstep(dist, 200, 0) * FSmoothstep(accel0 + jerk0, 10, 30);
-            float weight = stockWeight + MathF.Max(mod2, mod3) - mod4;
+            if (weight != 1)
+            weight += MathF.Max(mod2, mod3) - mod4;
+
             aemaOutput = Vector2.Lerp(aemaOutput, ldOutput, weight);
          //   Console.WriteLine(weight);
         }
@@ -592,6 +607,8 @@ namespace Plugin260122
         Vector2 arc;
         float savetime;
         private HPETDeltaStopwatch reportStopwatch = new HPETDeltaStopwatch();
+        private HPETDeltaStopwatch updateStopwatch = new HPETDeltaStopwatch();
+        float updateTime;
         float alpha0, alpha1, alpha0PreservationSociety;
         float top, bottom;
         Vector2 a1stdir0, a1stdir1, a1stdir2;
