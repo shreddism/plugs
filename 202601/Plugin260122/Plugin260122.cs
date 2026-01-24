@@ -28,7 +28,7 @@ namespace Plugin260122
         }
         public bool _vtToggle;
 
-        [Property("VT Limiter"), DefaultPropertyValue(2.5f), ToolTip
+        [Property("VT Limiter"), DefaultPropertyValue(3.0f), ToolTip
         (
             "Filter template:\n\n" +
             "A property that appear as an input box.\n\n" +
@@ -88,7 +88,7 @@ namespace Plugin260122
         }
         public bool _ldToggle;
 
-        [Property("LD Outer"), DefaultPropertyValue(25f), ToolTip
+        [Property("LD Outer"), DefaultPropertyValue(50f), ToolTip
         (
             "Filter template:\n\n" +
             "A property that appear as an input box.\n\n" +
@@ -100,7 +100,7 @@ namespace Plugin260122
         }
         public float _ldOuter;
 
-        [Property("Stock Weight"), DefaultPropertyValue(0.67f), ToolTip
+        [Property("Stock Weight"), DefaultPropertyValue(0.99f), ToolTip
         (
             "Filter template:\n\n" +
             "A property that appear as an input box.\n\n" +

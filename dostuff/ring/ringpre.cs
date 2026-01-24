@@ -33,7 +33,7 @@ namespace ring
                 Vector2 dist = pos0 - ringPos0;
                 float scale = 1;
 
-                float r = (3 + (200 * MathF.Max(0, (FSmootherstep(ddir0.Length(), 2f, 10f) * MathF.Max(0.1f, DotNorm(ddir0, dir0))) - FSmootherstep(vel0 - ddir0.Length(), 50, 100))));
+                float r = 4;
 
                 ringPos1 = ringPos0;
                 ringPos0 += MathF.Max(0, MathF.Max(dist.Length() - r, 0.0f * (dist.Length() - 500))) * Vector2.Normalize(dist);
@@ -48,7 +48,7 @@ namespace ring
                 outputPos0 += ringDir;
 
                 if (ringDir.Length() > 0)
-                outputPos0 = capDist(outputPos0, Vector2.Lerp(outputPos0, pos0, 1f), 100);
+                outputPos0 = capDist(outputPos0, Vector2.Lerp(outputPos0, pos0, 0.1f), 2 * vel0);
 
                 
                 
@@ -59,7 +59,7 @@ namespace ring
 
                
 
-              //  Console.WriteLine(pos0 - outputPos0);
+              //  Console.WriteLine(dir0.Length());
 
                 if (!vec2IsFinite(outputPos0) && (pos0 - pos1 != Vector2.Zero)) {
                     outputPos0 = pos0;
