@@ -145,7 +145,7 @@ namespace Plugin260122
                     emergency--;
                 }
                 else {
-                    emergency = 6;
+                    emergency = 5;
                 }
                 consume = true;
                       
@@ -178,12 +178,20 @@ namespace Plugin260122
             {
                // perfStopwatch.Restart();
 
-               if (emergency > 6) {
+               if (emergency > 0) {
                 report.Position = pos0;
                 ldOutput = pos0;
                 aemaOutput = pos0;
                 trDir = Vector2.Zero;
                 ldDir = Vector2.Zero;
+                stdir0 = Vector2.Zero;
+                a1stdir0 = Vector2.Zero;
+                dir0 = Vector2.Zero;
+                accel0 = 0;
+                pointaccel0 = 0;
+                vel0 = 0;
+                ddir0 = Vector2.Zero;
+                jerk0 = 0;
                OnEmit();
                return;
                }
