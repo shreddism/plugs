@@ -16,7 +16,7 @@ namespace antigapasyncema
 
         public override PipelinePosition Position => PipelinePosition.PostTransform;
 
-        [Property("weight"), DefaultPropertyValue(0.9f), ToolTip
+        [Property("weight"), DefaultPropertyValue(1f), ToolTip
         (
             "Filter template:\n\n" +
             "A property that appear as an input box.\n\n" +
@@ -36,7 +36,7 @@ namespace antigapasyncema
         )]
         public bool wire { set; get; }
 
-        [Property("Async Wire Stack Override"), DefaultPropertyValue(false), ToolTip
+        [Property("Async Wire Stack Override"), DefaultPropertyValue(true), ToolTip
         (
             "Filter template:\n\n" +
             "A property that appear as an input box.\n\n" +
