@@ -145,7 +145,7 @@ namespace Plugin260122
                     emergency--;
                 }
                 else {
-                    emergency = 5;
+                    emergency = 20;
                 }
                 consume = true;
                       
@@ -163,6 +163,8 @@ namespace Plugin260122
                     UpdateState();
                 }
 
+                Console.WriteLine(report.Position);
+
             }
             else {
                 OnEmit();
@@ -178,23 +180,10 @@ namespace Plugin260122
             {
                // perfStopwatch.Restart();
 
-               if (emergency > 0) {
-                report.Position = pos0;
-                ldOutput = pos0;
-                aemaOutput = pos0;
-                trDir = Vector2.Zero;
-                ldDir = Vector2.Zero;
-                stdir0 = Vector2.Zero;
-                a1stdir0 = Vector2.Zero;
-                dir0 = Vector2.Zero;
-                accel0 = 0;
-                pointaccel0 = 0;
-                vel0 = 0;
-                ddir0 = Vector2.Zero;
-                jerk0 = 0;
-               OnEmit();
-               return;
-               }
+               
+            
+
+               
 
                 updateTime = (float)updateStopwatch.Restart().TotalMilliseconds;
 
@@ -253,9 +242,28 @@ namespace Plugin260122
                 report.Position = aemaOutput;
                 report.Pressure = pressure0;
 
+                if (!vec2IsFinite(report.Position)) {
+                    report.Position = pos0;
+                    aemaOutput = pos0;
+                    ldOutput = pos0;
+                    OnEmit();
+                    return;
+                }
+
+                if (emergency > 0) {
+                report.Position = pos0;
+                ldOutput = pos0;
+                aemaOutput = pos0;
+               
+               OnEmit();
+               return;
+               }
+
               //  Console.WriteLine(report.Position - pos0);
             //  Console.WriteLine(Vector2.Distance(ddir0, ddir1));
                 consume = false;
+
+                Console.WriteLine(alpha0);
             
                 OnEmit();
             }
@@ -320,7 +328,7 @@ namespace Plugin260122
                 float vscale = FSmoothstep(vel0, 3, 25);
                 float scale = FSmootherstep(MathF.Max(pointaccel0, Vector2.Distance(stdir0, dir0)), Math.Max(0, vscale * dacInner), 0.01f + (vscale * dacOuter));
                 stdir0 = Vector2.Lerp(stdir0, dir0, scale);
-                if (vel0 >= 1 && vel1 >= 1 && vel0 < 100) {
+                if (vel0 >= 1 && vel1 >= 1 && vel0 < 100 && stdir0.Length() > 1) {
                     float ascale = MathF.Max(Math.Abs(accel0), Math.Abs(stdir0.Length() - stdir1.Length()));
                     stdir0 = Vector2.Lerp(stdir0, stdir1.Length() * Vector2.Normalize(stdir0), vscale * (1 - scale) * (FSmoothstep(ascale, 0, dacOuter)));
                 }
@@ -334,7 +342,7 @@ namespace Plugin260122
             if (ldToggle) {
             if (clusterjumping && accel0 < 0 && namelesstime1 > 6 && peakAccel1 > 25) {
                 linedrivetime = Math.Min(linedrivetime + 1, namelesstime1);
-                float scale1 = MathF.Pow(Math.Max(0.01f, Vector2.Dot(Vector2.Normalize(trDir - clusterdir1), Vector2.Normalize(Vector2.Zero - clusterdir1))), 10);
+                float scale1 = MathF.Pow(Math.Max(0.01f, DotNorm(trDir - clusterdir1, Vector2.Zero - clusterdir1)), 10);
                 float time1 = Line.SelfSmoothstep((linedrivetime + (vtlimiter - 3)) / namelesstime1);
                 float time2 = Line.SelfSmoothstep((linedrivetime + (vtlimiter - 2)) / namelesstime1);
                 Vector2 dist = ctozero.SegmentDistanceToPoint(trDir, time1, time2);
@@ -426,6 +434,15 @@ namespace Plugin260122
             Console.WriteLine("xx");
             Console.WriteLine("dd");
         }
+
+        float DotNorm(Vector2 a, Vector2 b) {
+            if (a != Vector2.Zero && b != Vector2.Zero)
+                return Vector2.Dot(Vector2.Normalize(a), Vector2.Normalize(b));
+            else return 1;
+        }
+
+        float Default(float a, float b) => float.IsFinite(a) ? a : b;
+        
 
         public static float FSmoothstep(float x, float start, float end)
         {
