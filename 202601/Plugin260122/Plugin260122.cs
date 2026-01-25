@@ -141,10 +141,11 @@ namespace Plugin260122
                 reportTime = (float)reportStopwatch.Restart().TotalMilliseconds;
                 if (reportTime < 25) {
                     reportMsAvg += ((reportTime - reportMsAvg) * 0.1f);
-                    emergency = false;
+                    if (emergency > 0)
+                    emergency--;
                 }
                 else {
-                    emergency = true;
+                    emergency = 6;
                 }
                 consume = true;
                       
@@ -176,6 +177,16 @@ namespace Plugin260122
             if (State is ITabletReport report && PenIsInRange())
             {
                // perfStopwatch.Restart();
+
+               if (emergency > 6) {
+                report.Position = pos0;
+                ldOutput = pos0;
+                aemaOutput = pos0;
+                trDir = Vector2.Zero;
+                ldDir = Vector2.Zero;
+               OnEmit();
+               return;
+               }
 
                 updateTime = (float)updateStopwatch.Restart().TotalMilliseconds;
 
@@ -220,7 +231,7 @@ namespace Plugin260122
 
                 ldOutput += ldDir;
 
-                if (!emergency && !liftorpress && vec2IsFinite(ldOutput + aemaOutput)) {
+                if (!liftorpress && vec2IsFinite(ldOutput + aemaOutput)) {
                     ldOutput = Vector2.Lerp(ldOutput, pos0 + trDir + (trDir - (stdir1 / reportMsAvg) * updateTime / (1000 / Frequency)), dumbWeight);
                    ldOutput = Vector2.Lerp(ldOutput, pos0, dumbWeight * FSmoothstep(accel0, 0, -200f));
                 }
@@ -235,7 +246,7 @@ namespace Plugin260122
                 report.Pressure = pressure0;
 
               //  Console.WriteLine(report.Position - pos0);
-              //Console.WriteLine(pointaccel0);
+            //  Console.WriteLine(Vector2.Distance(ddir0, ddir1));
                 consume = false;
             
                 OnEmit();
@@ -291,8 +302,8 @@ namespace Plugin260122
             pathpreservationsociety = Math.Min(pathpreservationsociety, pps2);
             pps3 = FSmoothstep(stdir3.Length() - stdir0.Length(), -15, 0) - FSmoothstep(stdir3.Length() - stdir0.Length(), 0, 15);
 
-            if (pointaccel0 > 400)
-                pathpreservationsociety = 2;
+            if (pressure0 == 0)
+                pathpreservationsociety = Math.Min(pathpreservationsociety, 3 - FSmoothstep(Vector2.Distance(ddir0, ddir1), 30, 69));
             
         }
 
@@ -602,7 +613,7 @@ namespace Plugin260122
         Vector2 trueOutput, trueDir;
         Vector2 ldDir, ldOutput;
         Vector2 aemaOutput;
-        bool emergency;
+        int emergency;
         int namelesstime0, namelesstime1;
         float linedrivetime;
         bool linedriving;
