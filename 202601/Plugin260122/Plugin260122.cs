@@ -145,7 +145,7 @@ namespace Plugin260122
                     emergency--;
                 }
                 else {
-                    emergency = 20;
+                    emergency = 5;
                 }
                 consume = true;
                       
