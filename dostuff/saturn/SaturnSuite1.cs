@@ -217,7 +217,7 @@ namespace Saturn
                         else top = 0;
                     }
                     
-                    float ohmygodbruh = (float)(reportStopwatch.Elapsed.TotalSeconds * Frequency / reportMsAvg) * (1000 / Frequency);
+                    float ohmygodbruh = (float)(reportStopwatch.Elapsed.TotalSeconds * Frequency / reportMsAvg) * (expect);
 
                     alpha0 = ((1 - top) * ohmygodbruh) + 1.120f * top;
 
@@ -227,12 +227,9 @@ namespace Saturn
 
                     alpha0 = Math.Clamp(alpha0, (vtlimiter - 1), pathpreservationsociety);
 
-                    trDir = Trajectory(stdir0, stdir1, stdir2, alpha0) / (reportMsAvg / (1000 / Frequency));
-                    sdirt1 = Trajectory(a1stdir0, a1stdir1, a1stdir2, alpha0 + 0.5f) / (reportMsAvg / (1000 / Frequency));
-                    trDir = Vector2.Lerp(trDir, sdirt1, pps3);
-                    if (wire) {
-                        trDir *= updateTime / (1000 / Frequency);
-                    }
+                    trDir = Trajectory(stdir0, stdir1, stdir2, alpha0) / (reportMsAvg / (expect));
+                    sdirt1 = Trajectory(a1stdir0, a1stdir1, a1stdir2, alpha0 + 0.5f) / (reportMsAvg / (expect));
+                    trDir = WireAdjust(Vector2.Lerp(trDir, sdirt1, pps3), expect, updateTime, wire);
                     LineDrive();
                 }
                 else {
@@ -249,7 +246,7 @@ namespace Saturn
                 ldOutput += ldDir;
 
                 if (!liftorpress && vec2IsFinite(ldOutput + aemaOutput + ringOutput)) {
-                    ldOutput = Vector2.Lerp(ldOutput, pos0 + trDir + (trDir - (stdir1 / reportMsAvg) * updateTime / (1000 / Frequency)), dumbWeight);
+                    ldOutput = Vector2.Lerp(ldOutput, pos0 + (trDir - (trDir - (stdir1 / reportMsAvg))) * Math.Max(0, alpha0 - (vtlimiter - 1)) * (reportMsAvg / expect), dumbWeight);
                     ldOutput = Vector2.Lerp(ldOutput, pos0, dumbWeight * FSmoothstep(accel0, 0, -200f));
                 }
                 else {
@@ -412,7 +409,7 @@ namespace Saturn
         void AEMA() {
             float weight = 1;
             if (aemaToggle) {
-                weight = stockWeight;
+                stockWeight = weight;
                 float mod1 = (1f - stockWeight) * (FSmoothstep(vel0, 25, 75) - FSmoothstep(vel0, 175, 250)) * FSmoothstep(MathF.Abs(accel0), 50, 10);
                 float dist = Vector2.Distance(aemaOutput, ringOutput);
                 float mod2 = mod1 * FSmoothstep(dist, 0, 75);
@@ -420,10 +417,12 @@ namespace Saturn
                 float mod4 = stockWeight * FSmoothstep(dist, 200, 0) * FSmoothstep(accel0 + jerk0, 10, 30);
                 weight += MathF.Max(mod2, mod3) - mod4;
             }
-            aemaOutput = Vector2.Lerp(aemaOutput, ringOutput, weight);
+            aemaOutput = Vector2.Lerp(aemaOutput, ringOutput, WireAdjust(weight, expect, updateTime, wire));
         }
 
-        
+        float WireAdjust(float a, float be, float br, bool w) => w ? a * (br / be) : a;
+
+        Vector2 WireAdjust(Vector2 a, float be, float br, bool w) => w ? a * (br / be) : a;
 
         void ConditionalUpdate() {
             if (!(accel0 > 0 && accel1 < 0) && !(accel0 < 0 && accel1 > 0)) {
@@ -716,5 +715,7 @@ namespace Saturn
         double updates = 0;
         uint pressure0, pressure1;
         bool liftorpress;
+
+        float expect => 1000 / Frequency;
     }
 }
