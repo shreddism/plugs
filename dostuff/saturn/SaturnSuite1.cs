@@ -5,34 +5,31 @@ using OpenTabletDriver.Plugin.Output;
 using OpenTabletDriver.Plugin.Tablet;
 using OpenTabletDriver.Plugin.Timing;       
 
-namespace Plugin260122
+namespace Saturn
 {
-    [PluginName("Plugin260122")]
-    public class Plugin260122 : AsyncPositionedPipelineElement<IDeviceReport>
+    [PluginName("Saturn - Suite 1")]
+    public class Suite1 : AsyncPositionedPipelineElement<IDeviceReport>
     {
-        public Plugin260122() : base()
+        public Suite1() : base()
         {
         }
 
         public override PipelinePosition Position => PipelinePosition.PreTransform;
 
-        [Property("VT Toggle"), DefaultPropertyValue(true), ToolTip
+        [Property("Velocity Trajectory Toggle"), DefaultPropertyValue(true), ToolTip
         (
-            "Filter template:\n\n" +
-            "A property that appear as an input box.\n\n" +
-            "Has a numerical value."
+            "You should almost definitely have this enabled.\n" +
+            "If not, use the other standalone filters. Your life may be much easier."
         )]
-        public bool vtToggle { 
-            set => _vtToggle = value;
-            get => _vtToggle;
-        }
-        public bool _vtToggle;
+        public bool vtToggle { set; get; }
 
-        [Property("VT Limiter"), DefaultPropertyValue(3.0f), ToolTip
+        [Property("Velocity Trajectory Limiter"), DefaultPropertyValue(3.0f), ToolTip
         (
-            "Filter template:\n\n" +
-            "A property that appear as an input box.\n\n" +
-            "Has a numerical value."
+            "2 = zero prediction, only interpolation, 3 = only prediction under sufficiently accelerating scenarios.\n" +
+            "If on a Wacom Pro of 200hz or 300hz, put this to 3.\n" +
+            "From testing my PTK-470, the input is so noiseless that prediction can be made with imperceptible error.\n" +
+            "This could be because of its resolution, which is quadruple normal. (Wacom Pro 200hz tablets have the same resolution)\n" +
+            "If not, try lower, and if you don't like the feel of it, try the standalone filters.\n" 
         )]
         public float vtlimiter { 
             set => _vtlimiter = (float)Math.Clamp(value, 2.0f, 3.0f);
@@ -40,23 +37,20 @@ namespace Plugin260122
         }
         public float _vtlimiter;
 
-        [Property("DAC Toggle"), DefaultPropertyValue(true), ToolTip
+        [Property("Directional Antichatter Toggle"), DefaultPropertyValue(true), ToolTip
         (
-            "Filter template:\n\n" +
-            "A property that appear as an input box.\n\n" +
-            "Has a numerical value."
+            "Antichatter, but applied to direction per report's point instead.\n" +
+            "Improves frame pacing heavily in small area scenarios given proper settings.\n" +
+            "Your tablet should hopefully have even internal report intervals (Wacom)"
         )]
-        public bool dacToggle { 
-            set => _dacToggle = value;
-            get => _dacToggle;
-        }
-        public bool _dacToggle;
+        public bool dacToggle { set; get; }
 
-        [Property("DAC Inner"), DefaultPropertyValue(0f), ToolTip
+        [Property("Directional Antichatter Inner"), DefaultPropertyValue(0f), ToolTip
         (
-            "Filter template:\n\n" +
-            "A property that appear as an input box.\n\n" +
-            "Has a numerical value."
+            "Similar method to Radial Follow. The unit of this is tablet raw data unit per report.\n" +
+            "If on a large-small area on a Wacom Pro, try 0-1 respectively.\n" +
+            "It's really your preference, though this should not go high.\n" +
+            "Internal thresholds are used to prevent this messing things up horribly."
         )]
         public float dacInner { 
             set => _dacInner = Math.Clamp(value, 0, _dacOuter);
@@ -64,11 +58,13 @@ namespace Plugin260122
         }
         public float _dacInner;
 
-        [Property("DAC Outer"), DefaultPropertyValue(1f), ToolTip
+        [Property("Directional Antichatter Outer"), DefaultPropertyValue(1f), ToolTip
         (
-            "Filter template:\n\n" +
-            "A property that appear as an input box.\n\n" +
-            "Has a numerical value."
+            "Similar method to Radial Follow. The unit of this is tablet raw data unit per report.\n" +
+            "If on a large-small area on a Wacom Pro, try 1-3 respectively.\n" +
+            "It's really your preference, though this should not go high.\n" +
+            "Internal thresholds are used to prevent this from messing things up horribly.\n" 
+
         )]
         public float dacOuter { 
             set => _dacOuter = MathF.Max(value, 0.1f);
@@ -76,23 +72,19 @@ namespace Plugin260122
         }
         public float _dacOuter;
 
-        [Property("LD Toggle"), DefaultPropertyValue(true), ToolTip
+        [Property("Line Drive Toggle"), DefaultPropertyValue(false), ToolTip
         (
-            "Filter template:\n\n" +
-            "A property that appear as an input box.\n\n" +
-            "Has a numerical value."
+            "Experimental feature that may have little effect at all.\n" +
+            "Attempts to reduce decel noise on a jump by taking the acceleration time of a jump\n" +
+            "and creating a theoretical noiseless path of velocity in deceleration to zero,\n" +
+            "which has a 'gravitational pull' on interpolated velocity.\n" +
+            "I seriously cannot explain it better. Feel free to leave disabled."
         )]
-        public bool ldToggle { 
-            set => _ldToggle = value;
-            get => _ldToggle;
-        }
-        public bool _ldToggle;
+        public bool ldToggle { set; get; }
 
         [Property("LD Outer"), DefaultPropertyValue(50f), ToolTip
         (
-            "Filter template:\n\n" +
-            "A property that appear as an input box.\n\n" +
-            "Has a numerical value."
+            "Range of 'gravitational pull.' Only applies if the above toggle is checked."
         )]
         public float ldOuter { 
             set => _ldOuter = MathF.Max(value, 0.1f);
@@ -100,11 +92,35 @@ namespace Plugin260122
         }
         public float _ldOuter;
 
-        [Property("Stock Weight"), DefaultPropertyValue(0.99f), ToolTip
+        [Property("Adaptive EMA Toggle"), DefaultPropertyValue(true), ToolTip
         (
-            "Filter template:\n\n" +
-            "A property that appear as an input box.\n\n" +
-            "Has a numerical value."
+            "Devocub/Hawku Antichatter/Smoothing uses EMA at 1000hz. The 'Latency' label in milliseconds\n" +
+            "is probably just a remnant of ancient times.\n" +
+            "EMA means 'Exponential Moving Average' where the formula is outputpos = ((1 - weight) * outputpos) + (weight * inputpos).\n" +
+            "The issue that Devocub/Hawku has is that at a high enough weight (low latency), it ends up\n" +
+            "skipping a large distance to get mostly to raw in the first 2 or so refreshes after a report,\n" +
+            "and staying between where it landed itself and raw position for the next (whatever amount) of updates before the next report.\n" +
+            "This is because it simply runs EMA at a disjointed frequency from its information update without adjustment,\n" +
+            "which is not how EMA works at all, and if it were adjusted to shift its behavior to even spacing when the weight approaches 1,\n" +
+            "it would eventually converge to a filter that lerps between last position and current raw position using an expected \n" +
+            "amount of time to the next report.\n\n" +
+            "This does not have this issue, though, because we are applying EMA to output, and even if wired, time is adjusted for.\n" +
+            "For context, Temporal Resampler has the opportunity to also run EMA at 1000hz to a decent degree of success, \n" +
+            "especially because it is mostly velocity-congruent despite not even focusing on that because of how good it is, but it ends up favoring\n" +
+            "simply running its input point for trajectory through it at report rate, which may not be preferable.\n" +
+            "If you think my method of interpolation sucks and you want to try Temporal Resampler with this smoothing on top,\n" +
+            "make sure that this filter is applied after Temporal Resampler by checking order in daemon,\n" +
+            "then make sure to disable every other checkbox that is not this one, even wire.\n" +
+            "Generally, unforeseen consequences will occur if this is put after another asynchronous filter without\n" +
+            "knowing exactly what you are doing, and this is no exception.\n"
+
+        )]
+        public bool aemaToggle { set; get; }
+
+        [Property("Stock Adaptive EMA Weight"), DefaultPropertyValue(1.0f), ToolTip
+        (
+            "EMA weight, but it can change based on the movement situation/amount of lag there is, based on internal thresholds.\n" +
+            "This should hold for any reasonable area."
         )]
         public float stockWeight { 
             set => _stockWeight = (float)Math.Clamp(value, 0.0f, 1.0f);
@@ -114,21 +130,37 @@ namespace Plugin260122
 
         [Property("Dumb Weight (don't touch)"), DefaultPropertyValue(0.05f), ToolTip
         (
-            "Filter template:\n\n" +
-            "A property that appear as an input box.\n\n" +
-            "Has a numerical value."
+            "This value has been internally clamped between 0.01f and 0.1f\n" +
+            "to prevent people who don't know any better from doing anything bad.\n" +
+            "If you were to set this to 0, for example, you would get tablet drift.\n" +
+            "Any higher than 0.1 and it would start bugging out."
         )]
         public float dumbWeight { 
-            set => _dumbWeight = (float)Math.Clamp(value, 0.0f, 0.9f);
+            set => _dumbWeight = (float)Math.Clamp(value, 0.01f, 0.1f);
             get => _dumbWeight;
         }
         public float _dumbWeight;
 
+        [Property("Ring Toggle"), DefaultPropertyValue(true), ToolTip
+        (
+            "Oh YHeah"
+        )]
+        public bool ringToggle { set; get; }
+
+        [Property("stockR"), DefaultPropertyValue(5f), ToolTip
+        (
+            "Ta"
+        )]
+        public float rInner { 
+            set => _rInner = (float)Math.Clamp(value, 1f, 100f);
+            get => _rInner;
+        }
+        public float _rInner;
+
         [Property("wire"), DefaultPropertyValue(true), ToolTip
         (
-            "Filter template:\n\n" +
-            "A property that appear as an input box.\n\n" +
-            "Has a numerical value."
+            "You should definitely leave this enabled unless your specific situation requires otherwise.\n" +
+            "Equivalent to 'extraFrames' from Temporal Resampler."
         )]
         public bool wire { set; get; }
 
@@ -162,60 +194,46 @@ namespace Plugin260122
                 if (!vtToggle | wire) {
                     UpdateState();
                 }
-
-              //  Console.WriteLine(report.Position);
-
             }
             else {
                 OnEmit();
             } 
         }
 
-        const int TEST_SIZE = 64;
-        Random aaar = new Random();
-
-        protected override void UpdateState()   // Interpolation
+        protected override void UpdateState()
         {
             if (State is ITabletReport report && PenIsInRange())
             {
-               // perfStopwatch.Restart();
-
-               
-            
-
-               
-
                 updateTime = (float)updateStopwatch.Restart().TotalMilliseconds;
 
                 if (vtToggle) {
-                if (consume) {
-                alpha1 = 0;
+                    if (consume) {
+                        alpha1 = 0;
 
-                if ((alpha0PreservationSociety > 1) && (top < 1)) {
-                    top = alpha0PreservationSociety - 1;
-                    bottom = 0;
-                }
-                else top = 0;
-                }
+                        if ((alpha0PreservationSociety > 1) && (top < 1)) {
+                            top = alpha0PreservationSociety - 1;
+                            bottom = 0;
+                        }
+                        else top = 0;
+                    }
+                    
+                    float ohmygodbruh = (float)(reportStopwatch.Elapsed.TotalSeconds * Frequency / reportMsAvg) * (1000 / Frequency);
+
+                    alpha0 = ((1 - top) * ohmygodbruh) + 1.120f * top;
+
+                    alpha0PreservationSociety = alpha0;
                 
-                float ohmygodbruh = (float)(reportStopwatch.Elapsed.TotalSeconds * Frequency / reportMsAvg) * (1000 / Frequency);
+                    alpha0 += (vtlimiter - 1);
 
-                alpha0 = ((1 - top) * ohmygodbruh) + 1.120f * top;
+                    alpha0 = Math.Clamp(alpha0, (vtlimiter - 1), pathpreservationsociety);
 
-                alpha0PreservationSociety = alpha0;
-            
-                alpha0 += (vtlimiter - 1);
-
-                alpha0 = Math.Clamp(alpha0, (vtlimiter - 1), pathpreservationsociety);
-
-                trDir = Trajectory(stdir0, stdir1, stdir2, alpha0) / (reportMsAvg / (1000 / Frequency));
-                sdirt1 = Trajectory(a1stdir0, a1stdir1, a1stdir2, alpha0 + 0.5f) / (reportMsAvg / (1000 / Frequency));
-                trDir = Vector2.Lerp(trDir, sdirt1, pps3);
-                if (wire) {
-                    trDir *= updateTime / (1000 / Frequency);
-                }
-            //    Console.WriteLine(trDir.Length());
-                LineDrive();
+                    trDir = Trajectory(stdir0, stdir1, stdir2, alpha0) / (reportMsAvg / (1000 / Frequency));
+                    sdirt1 = Trajectory(a1stdir0, a1stdir1, a1stdir2, alpha0 + 0.5f) / (reportMsAvg / (1000 / Frequency));
+                    trDir = Vector2.Lerp(trDir, sdirt1, pps3);
+                    if (wire) {
+                        trDir *= updateTime / (1000 / Frequency);
+                    }
+                    LineDrive();
                 }
                 else {
                     if (consume) {
@@ -226,18 +244,24 @@ namespace Plugin260122
                     }
                 }
 
+                RF();
+
                 ldOutput += ldDir;
 
-                if (!liftorpress && vec2IsFinite(ldOutput + aemaOutput)) {
+                if (!liftorpress && vec2IsFinite(ldOutput + aemaOutput + ringOutput)) {
                     ldOutput = Vector2.Lerp(ldOutput, pos0 + trDir + (trDir - (stdir1 / reportMsAvg) * updateTime / (1000 / Frequency)), dumbWeight);
-                   ldOutput = Vector2.Lerp(ldOutput, pos0, dumbWeight * FSmoothstep(accel0, 0, -200f));
+                    ldOutput = Vector2.Lerp(ldOutput, pos0, dumbWeight * FSmoothstep(accel0, 0, -200f));
                 }
                 else {
                     ldOutput = pos0;
                     aemaOutput = pos0;
+                    ringOutput = pos0;
+                    emergency = 4;
                 } 
 
                 AEMA();
+
+                
 
                 report.Position = aemaOutput;
                 report.Pressure = pressure0;
@@ -246,25 +270,20 @@ namespace Plugin260122
                     report.Position = pos0;
                     aemaOutput = pos0;
                     ldOutput = pos0;
+                    ringOutput = pos0;
                     OnEmit();
                     return;
                 }
 
                 if (emergency > 0) {
-                report.Position = pos0;
-                ldOutput = pos0;
-                aemaOutput = pos0;
-               
-               OnEmit();
-               return;
-               }
-
-              //  Console.WriteLine(report.Position - pos0);
-            //  Console.WriteLine(Vector2.Distance(ddir0, ddir1));
+                    report.Position = pos0;
+                    ldOutput = pos0;
+                    aemaOutput = pos0;
+                    ringOutput = pos0;
+                    OnEmit();
+                    return;
+                }
                 consume = false;
-
-               // Console.WriteLine(alpha0);
-            
                 OnEmit();
             }
         }
@@ -364,19 +383,47 @@ namespace Plugin260122
             else ldDir = trDir;
         }
 
-        void AEMA() {
-            float weight = stockWeight;
-            float mod1 = (1f - stockWeight) * (FSmoothstep(vel0, 25, 75) - FSmoothstep(vel0, 175, 250)) * FSmoothstep(MathF.Abs(accel0), 50, 10);
-            float dist = Vector2.Distance(aemaOutput, ldOutput);
-            float mod2 = mod1 * FSmoothstep(dist, 0, 75);
-            float mod3 = (1f - stockWeight) * FSmoothstep(dist, 0, 100) * FSmoothstep(accel0 - jerk0, -10, -30);
-            float mod4 = stockWeight * FSmoothstep(dist, 200, 0) * FSmoothstep(accel0 + jerk0, 10, 30);
-            if (weight != 1)
-            weight += MathF.Max(mod2, mod3) - mod4;
+        void RF() {
+            if (ringToggle) {
+                float mult = 20 + MathF.Max(100 * DotNorm(ddir0, dir0) * FSmootherstep((pointaccel0 + MathF.Max(jerk0, 0)) / (MathF.Log(MathF.E * vel0 + 1) + 1), 5, 10), -20);
+                ringInputPos1 = ringInputPos0;
+                ringInputPos0 = ldOutput;
+                ringInputDir = ringInputPos0 - ringInputPos1;
+                Vector2 dist = ldOutput - iRingPos0;
+                iRingPos1 = iRingPos0;
+                iRingPos0 += MathF.Max(0, dist.Length() - (rInner * mult)) * Default(Vector2.Normalize(dist), Vector2.Zero);
+                ringDir = iRingPos0 - iRingPos1;
+              //  Console.WriteLine(rInner * mult);
+                ringOutput += MinLength(ringDir, (5 + dir0.Length()) * Default(Vector2.Normalize(ringDir), Vector2.Zero));
 
-            aemaOutput = Vector2.Lerp(aemaOutput, ldOutput, weight);
-         //   Console.WriteLine(weight);
+                if (ringDir.Length() > 0)
+                ringOutput = capDist(ringOutput, Vector2.Lerp(ringOutput, ldOutput, 1f), 1f);
+
+                ringOutput = Vector2.Lerp(ringOutput, ldOutput, FSmoothstep(accel0, 0, -200));
+
+
+               // Console.WriteLine(mult);
+               // Console.WriteLine(ring);
+            }
+            else ringOutput = ldOutput;
+
         }
+
+        void AEMA() {
+            float weight = 1;
+            if (aemaToggle) {
+                weight = stockWeight;
+                float mod1 = (1f - stockWeight) * (FSmoothstep(vel0, 25, 75) - FSmoothstep(vel0, 175, 250)) * FSmoothstep(MathF.Abs(accel0), 50, 10);
+                float dist = Vector2.Distance(aemaOutput, ringOutput);
+                float mod2 = mod1 * FSmoothstep(dist, 0, 75);
+                float mod3 = (1f - stockWeight) * FSmoothstep(dist, 0, 100) * FSmoothstep(accel0 - jerk0, -10, -30);
+                float mod4 = stockWeight * FSmoothstep(dist, 200, 0) * FSmoothstep(accel0 + jerk0, 10, 30);
+                weight += MathF.Max(mod2, mod3) - mod4;
+            }
+            aemaOutput = Vector2.Lerp(aemaOutput, ringOutput, weight);
+        }
+
+        
 
         void ConditionalUpdate() {
             if (!(accel0 > 0 && accel1 < 0) && !(accel0 < 0 && accel1 > 0)) {
@@ -442,7 +489,12 @@ namespace Plugin260122
         }
 
         float Default(float a, float b) => float.IsFinite(a) ? a : b;
-        
+
+        Vector2 Default(Vector2 a, Vector2 b) => vec2IsFinite(a) ? a : b;
+
+        Vector2 MinLength(Vector2 a, Vector2 b) => a.Length() <= b.Length() ? a : b;
+
+        Vector2 capDist(Vector2 a, Vector2 b, float d) => a + MathF.Min(Vector2.Distance(b, a), d) * (vec2IsFinite(Vector2.Normalize(b - a)) ? Vector2.Normalize(b - a) : Vector2.Zero); 
 
         public static float FSmoothstep(float x, float start, float end)
         {
@@ -638,6 +690,7 @@ namespace Plugin260122
         Vector2 trueOutput, trueDir;
         Vector2 ldDir, ldOutput;
         Vector2 aemaOutput;
+        Vector2 iRingPos0, iRingPos1, ringDir, ringOutput, ringInputPos1, ringInputPos0, ringInputDir;
         int emergency;
         int namelesstime0, namelesstime1;
         float linedrivetime;
