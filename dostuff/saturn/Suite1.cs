@@ -267,7 +267,7 @@ namespace Saturn
                 
 
 
-                    if (moveOk && emergency == 0) {
+                    if (moveOk && emergency == 0 && !liftorpress) {
                     Vector2 pointaaaa = pos[0] + (trDir - (trDir - (stdir[1] / reportMsAvg))) * Math.Max(0, alpha0 - (vtlimiter - 1)) * (reportMsAvg / expect);
                    // Console.WriteLine(Vector2.Distance(ldOutput, pointaaaa));
                     ldOutput = Vector2.Lerp(ldOutput, pointaaaa, WireAdjust(dumbWeight, expect, updateTime, wire));
@@ -280,13 +280,13 @@ namespace Saturn
                 dirOfOutput = (report.Position - lastOutputPos) / updateTime;
                 report.Pressure = pressure[0];
 
-                if (!vec2IsFinite(report.Position + ringOutput + iRingPos0 + ldOutput)) {
-                    report.Position = pos[0];
+                if (!vec2IsFinite(report.Position + ringOutput + iRingPos0 + ldOutput) | liftorpress) {
+                    report.Position = Trajectory(pos[2], pos[1], pos[0], ohmygodbruh + 1);
                     aemaOutput = pos[0];
                     ldOutput = pos[0];
                     ringOutput = pos[0];
                     iRingPos0 = pos[0];
-                    emergency = 10;
+                    emergency = 3;
                     OnEmit();
                     return;
                 }
@@ -301,6 +301,8 @@ namespace Saturn
                     return;
                 }
 
+           
+
                 lastOutputPos = report.Position;
 
     
@@ -313,7 +315,7 @@ namespace Saturn
 
             //    Console.WriteLine(report.Position - pos[0]);
 
-                Plot();
+              //  Plot();
                 
                 OnEmit();
             }
@@ -407,7 +409,7 @@ namespace Saturn
                 ringOutput += ringDir;
 
                 if (ringDir.Length() > 0 || dist.Length() > rInner || accel[0] < -10 || vel[0] > 10 * rInner) {
-                ringOutput = capDist(ringOutput, Vector2.Lerp(ringOutput, ldOutput, 1f), 5f);
+                ringOutput = capDist(ringOutput, Vector2.Lerp(ringOutput, ldOutput, 1f), 2f);
                 ringOutput = Vector2.Lerp(ringOutput, ldOutput, FSmoothstep(accel[0], -10, -200));
                 moveOk = true;
                 }
@@ -425,11 +427,12 @@ namespace Saturn
                 stockWeight = weight;
                 float mod1 = (1f - stockWeight) * (FSmoothstep(vel[0], 25, 75) - FSmoothstep(vel[0], 175, 250)) * FSmoothstep(MathF.Abs(accel[0]), 50, 10);
                 float dist = Vector2.Distance(aemaOutput, ringOutput);
-                float mod2 = mod1 * FSmoothstep(dist, 0, 75);
-                float mod3 = (1f - stockWeight) * FSmoothstep(dist, 0, 100) * FSmoothstep(accel[0] - jerk[0], -10, -30);
-                float mod4 = stockWeight * FSmoothstep(dist, 200, 0) * FSmoothstep(accel[0] + jerk[0], 10, 30);
+                float mod2 = mod1 * FSmoothstep(dist, 0, 50);
+                float mod3 = (1f - stockWeight) * FSmoothstep(dist, 0, 100) * FSmoothstep(accel[0] - Math.Min(0, jerk[0]), -10, -30);
+                float mod4 = 2 * stockWeight * MathF.Pow(FSmoothstep(dist, 2500, 500) * FSmoothstep(accel[0] + Math.Max(0, jerk[0]), 10, 30), 2);
                 weight += Math.Max(mod2, mod3) - mod4;
-                weight = WireAdjust(weight, expect, updateTime, wire);
+                weight = WireAdjust(Math.Max(0, weight), expect, updateTime, wire);
+              //  Console.WriteLine(weight);
             }
             aemaOutput = Vector2.Lerp(aemaOutput, ringOutput, weight);
         }
