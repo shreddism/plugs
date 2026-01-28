@@ -7,10 +7,10 @@ using OpenTabletDriver.Plugin.Timing;
 
 namespace Saturn
 {
-    [PluginName("Saturn - Suite 1")]
-    public class Suite1 : AsyncPositionedPipelineElement<IDeviceReport>
+    [PluginName("Saturn - Suite")]
+    public class Suite : AsyncPositionedPipelineElement<IDeviceReport>
     {
-        public Suite1() : base()
+        public Suite() : base()
         {
         }
 
@@ -179,7 +179,7 @@ namespace Saturn
         protected override void ConsumeState()
         {
             if (State is ITabletReport report)
-            {
+            {    
                 reportTime = (float)reportStopwatch.Restart().TotalMilliseconds;
                 if (reportTime < 25) {
                     if (msOverride == 0)
@@ -204,13 +204,11 @@ namespace Saturn
                     top = 0;
                     bottom = 0;
                 }
-                
-                
 
                 if (!vtToggle | wire) {
                     UpdateState();
+                    
                 }
-               // Console.WriteLine(jerk[0]);
             }
             else {
                 OnEmit();
@@ -221,7 +219,7 @@ namespace Saturn
         {
             if (State is ITabletReport report && PenIsInRange())
             {
-                perfStopwatch.Restart();
+                
                 updateTime = (float)updateStopwatch.Restart().TotalMilliseconds;
 
                 if (vtToggle) {
@@ -264,15 +262,11 @@ namespace Saturn
 
                 RF();
 
-                
-
-
-                    if (moveOk && emergency == 0 && !liftorpress) {
+                if (moveOk && emergency == 0 && !liftorpress) {
                     Vector2 pointaaaa = pos[0] + (trDir - (trDir - (stdir[1] / reportMsAvg))) * Math.Max(0, alpha0 - (vtlimiter - 1)) * (reportMsAvg / expect);
-                   // Console.WriteLine(Vector2.Distance(ldOutput, pointaaaa));
                     ldOutput = Vector2.Lerp(ldOutput, pointaaaa, WireAdjust(dumbWeight, expect, updateTime, wire));
                     ldOutput = Vector2.Lerp(ldOutput, pos[0], dumbWeight * FSmoothstep(accel[0], -10f, -200f));
-                    }
+                }
               
                 AEMA();
 
@@ -292,7 +286,7 @@ namespace Saturn
                 }
 
                 if (emergency > 0) {
-                    report.Position = pos[0];
+                    report.Position = Trajectory(pos[2], pos[1], pos[0], ohmygodbruh + 1);
                     ldOutput = pos[0];
                     aemaOutput = pos[0];
                     ringOutput = pos[0];
@@ -308,28 +302,34 @@ namespace Saturn
     
 
                 
-
+                
+                
                 consume = false;
-
+                
                
 
             //    Console.WriteLine(report.Position - pos[0]);
 
               //  Plot();
+
+            
                 
                 OnEmit();
             }
         }
 
         void StatUpdate(ITabletReport report) {
+            
             InsertAtFirst(pos, report.Position);
             InsertAtFirst(pressure, report.Pressure);
             InsertAtFirst(dir, pos[0] - pos[1]);
             InsertAtFirst(vel, dir[0].Length());
             InsertAtFirst(ddir, dir[0] - dir[1]);
             InsertAtFirst(accel, vel[0] - vel[1]);
+            
             InsertAtFirst(pointaccel, ddir[0].Length());
             DAC();
+            
 
             if ((pressure[0] > 0 && pressure[1] == 0) || (pressure[0] == 0 && pressure[1] > 0))
             liftorpress = true;
@@ -696,7 +696,7 @@ namespace Saturn
             arr[0] = element;
         }
 
-        const int HMAX = 16;
+        const int HMAX = 4;
 
         Vector2 planestart, planeend, peak;
 
