@@ -192,9 +192,10 @@ namespace Saturn
                     emergency--;
                 }
                 else {
-                    emergency = 10;
+                    emergency = 5;
                 }
                 moveOk = false;
+                consume = true;
                       
                 StatUpdate(report);
                 ConditionalUpdate();
@@ -267,18 +268,18 @@ namespace Saturn
                 report.Pressure = pressure[0];
 
                 if (!vec2IsFinite(report.Position + ringOutput + iRingPos0 + ldOutput) | liftorpress) {
-                    report.Position = Trajectory(pos[2], pos[1], pos[0], ohmygodbruh + 1);
+                    report.Position = pos[0];
                     aemaOutput = pos[0];
                     ldOutput = pos[0];
                     ringOutput = pos[0];
                     iRingPos0 = pos[0];
-                    emergency = 3;
+                    emergency = 5;
                     OnEmit();
                     return;
                 }
 
                 if (emergency > 0) {
-                    report.Position = Trajectory(pos[2], pos[1], pos[0], ohmygodbruh + 1);
+                    report.Position = pos[0];
                     ldOutput = pos[0];
                     aemaOutput = pos[0];
                     ringOutput = pos[0];
@@ -286,6 +287,10 @@ namespace Saturn
                     OnEmit();
                     return;
                 }
+
+                consume = false;
+
+             //   Console.WriteLine(report.Position - pos[0]);
 
                 OnEmit();
             }

@@ -7,14 +7,14 @@ using OpenTabletDriver.Plugin.Timing;
 
 namespace Saturn
 {
-    [PluginName("Saturn - Anti-Gap Hawku Smoothing/Devocub Antichatter")]
+    [PluginName("Saturn - Anti-Gap Hawku Smoothing/Devocub Antichatter (PreTransform for Relative Mode)")]
     public class AntiGap : AsyncPositionedPipelineElement<IDeviceReport>
     {
         public AntiGap() : base()
         {
         }
 
-        public override PipelinePosition Position => PipelinePosition.PostTransform;
+        public override PipelinePosition Position => PipelinePosition.PreTransform;
 
         [Property("Hawku/Devocub Toggle"), DefaultPropertyValue(true), ToolTip
         (
@@ -110,13 +110,14 @@ namespace Saturn
             if (State is ITabletReport report)
             {  
                 if (isReady) {  
-                    if (!constantEvenedWeight) {
-                        consumeTime = (float)consumeStopwatch.Restart().TotalMilliseconds;
-
-                        if (consumeTime < 25.0f && consumeTime > 0.1f) {
+                    consumeTime = (float)consumeStopwatch.Restart().TotalMilliseconds;
+                    if (consumeTime < 25.0f && consumeTime > 0.1f) {
                             consumeMsAvg += ((consumeTime - consumeMsAvg) * 0.1f);
+                            if (emergency > 0)
+                            emergency--;
                         }
-
+                        else emergency = 10;
+                    if (!constantEvenedWeight) {
                         evenedWeight = (1 - MathF.Pow(1 - weight, (consumeMsAvg / timerInterval))) / (consumeMsAvg / timerInterval);
                     }
         
@@ -192,13 +193,16 @@ namespace Saturn
                 report.Position = outputPos;
                 report.Pressure = press0;
 
-                if (!vec2IsFinite(report.Position)) {
+                if (!vec2IsFinite(report.Position) | emergency > 0) {
                     report.Position = pos0;
+                    outputPos = pos0;
                 }
 
                 if (asyncwire && Math.Abs(updateTime - expectU) > 0.1f && updateTime > expectU) {
                     Console.WriteLine(updateTime);
                 }
+
+                
 
                 if (consume) {
                     consume = false;
@@ -224,6 +228,7 @@ namespace Saturn
         bool isReady = false;
         bool constantEvenedWeight = false;
         uint press0;
+        int emergency;
 
         void SetWeight(float lat)
         {
