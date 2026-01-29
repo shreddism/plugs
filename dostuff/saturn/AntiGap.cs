@@ -23,7 +23,7 @@ namespace Saturn
         )]
         public bool hdToggle { set; get; }
 
-        [Property("'Latency'"), DefaultPropertyValue(1.0f), ToolTip
+        [Property("'Latency'"), DefaultPropertyValue(0.0f), ToolTip
         (
             "This is just a fancy way of selecting weight.\n" +
             "An added latency of 0 won't break things."
@@ -36,7 +36,7 @@ namespace Saturn
 
         [Property("Internal 'Threshold' Constant"), DefaultPropertyValue(0.9f), ToolTip
         (
-            "I'm not sure what the purpose of this is.\n" +
+            "I'm not sure what the meaning of the existence\n" +
             "0.63 is what Hawku uses, 0.9 is what Devocub uses."
         )]
         public float threshold { 
@@ -74,9 +74,10 @@ namespace Saturn
         )]
         public bool wire { set; get; }
 
-        [Property("Spring Mult"), DefaultPropertyValue(0.1f), ToolTip
+        [Property("Spring Mult"), DefaultPropertyValue(0.0f), ToolTip
         (
             "Modifies the filter slightly to act more SpringInterpolator-like.\n" +
+            "Useful values range between 0.0 - 0.1.\n" +
             "Overshoot is always prevented."
         )]
         public float sMult {
@@ -85,7 +86,7 @@ namespace Saturn
         }
         public float _sMult;
 
-        [Property("Async Wire Stack Override"), DefaultPropertyValue(false), ToolTip
+        [Property("Async Wire Stack Override"), DefaultPropertyValue(true), ToolTip
         (
             "Only enable this if you know what you are doing."
         )]
@@ -97,7 +98,7 @@ namespace Saturn
         )]
         public float expectU { set; get; }
 
-        [Property("Expected Consume Time Override"), DefaultPropertyValue(0.0f), ToolTip
+        [Property("Expected Consume Time Override"), DefaultPropertyValue(1.0f), ToolTip
         (
             "You should know what you are doing if you change this from 0."
         )]

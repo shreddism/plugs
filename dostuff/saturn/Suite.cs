@@ -16,13 +16,6 @@ namespace Saturn
 
         public override PipelinePosition Position => PipelinePosition.PreTransform;
 
-        [Property("Velocity Trajectory Toggle"), DefaultPropertyValue(true), ToolTip
-        (
-            "You should almost definitely have this enabled.\n" +
-            "If not, use the other standalone filters. Your life may be much easier."
-        )]
-        public bool vtToggle { set; get; }
-
         [Property("Velocity Trajectory Limiter"), DefaultPropertyValue(3.0f), ToolTip
         (
             "2 = zero prediction, only interpolation, 3 = only prediction under sufficiently accelerating scenarios.\n" +
@@ -45,7 +38,7 @@ namespace Saturn
         )]
         public bool dacToggle { set; get; }
 
-        [Property("Directional Antichatter Inner"), DefaultPropertyValue(0f), ToolTip
+        [Property("Directional Antichatter Inner"), DefaultPropertyValue(1f), ToolTip
         (
             "Similar method to Radial Follow. The unit of this is tablet raw data unit per report.\n" +
             "If on a large-small area on a Wacom Pro, try 0-1 respectively.\n" +
@@ -58,13 +51,12 @@ namespace Saturn
         }
         public float _dacInner;
 
-        [Property("Directional Antichatter Outer"), DefaultPropertyValue(1f), ToolTip
+        [Property("Directional Antichatter Outer"), DefaultPropertyValue(2f), ToolTip
         (
             "Similar method to Radial Follow. The unit of this is tablet raw data unit per report.\n" +
             "If on a large-small area on a Wacom Pro, try 1-3 respectively.\n" +
             "It's really your preference, though this should not go high.\n" +
-            "Internal thresholds are used to prevent this from messing things up horribly.\n" 
-
+            "Internal thresholds are used to prevent this from messing things up horribly."
         )]
         public float dacOuter { 
             set => _dacOuter = Math.Max(value, 0.1f);
@@ -92,7 +84,7 @@ namespace Saturn
         }
         public float _ldOuter;
 
-        [Property("Adaptive EMA Toggle"), DefaultPropertyValue(true), ToolTip
+        [Property("Adaptive EMA Toggle"), DefaultPropertyValue(false), ToolTip
         (
             "Devocub/Hawku Antichatter/Smoothing uses EMA at 1000hz. The 'Latency' label in milliseconds\n" +
             "is probably just a remnant of ancient times.\n" +
@@ -108,11 +100,7 @@ namespace Saturn
             "For context, Temporal Resampler has the opportunity to also run EMA at 1000hz to a decent degree of success, \n" +
             "especially because it is mostly velocity-congruent despite not even focusing on that because of how good it is, but it ends up favoring\n" +
             "simply running its input point for trajectory through it at report rate, which may not be preferable.\n" +
-            "If you think my method of interpolation sucks and you want to try Temporal Resampler with this smoothing on top,\n" +
-            "make sure that this filter is applied after Temporal Resampler by checking order in daemon,\n" +
-            "then make sure to disable every other checkbox that is not this one, even wire.\n" +
-            "Generally, unforeseen consequences will occur if this is put after another asynchronous filter without\n" +
-            "knowing exactly what you are doing, and this is no exception.\n"
+            "Do not use this after another asynchronous filter; the other smoothing is more well-suited."
 
         )]
         public bool aemaToggle { set; get; }
@@ -128,34 +116,48 @@ namespace Saturn
         }
         public float _stockWeight;
 
-        [Property("Dumb Weight (don't touch)"), DefaultPropertyValue(0.05f), ToolTip
+        [Property("Accel Response Aggressiveness"), DefaultPropertyValue(0f), ToolTip
         (
-            "This value has been internally clamped between 0.01f and 0.1f\n" +
-            "to prevent people who don't know any better from doing anything bad.\n" +
-            "If you were to set this to 0, for example, you would get tablet drift.\n" +
-            "Any higher than 0.1 and it would start bugging out."
+            "Useful values range between 0 and 1, or perhaps above in certain cases.\n" +
+            "Do not put above 0 if you hover, as reporting becomes buggy.\n" +
+            "Makes aim 'snappier' on sharp accel."
         )]
-        public float dumbWeight { 
-            set => _dumbWeight = Math.Clamp(value, 0, 1);
-            get => _dumbWeight;
+        public float aResponse { 
+            set => _aResponse = Math.Clamp(value, 0, 1000000.0f);
+            get => _aResponse;
         }
-        public float _dumbWeight;
+        public float _aResponse;
+
+        const float dumbWeight = 0.025f;
 
         [Property("Ring Toggle"), DefaultPropertyValue(true), ToolTip
         (
-            "Oh YHeah"
+            "Ring Antichatter is relatively simple, making it non-invasive and low-latency.\n" +
+            "It works similarly to Radial Follow, but it ensures\n" +
+            "to not underaim if the radius is anything over the raw tablet noise."
         )]
         public bool ringToggle { set; get; }
 
-        [Property("stockR"), DefaultPropertyValue(5f), ToolTip
+        [Property("Ring Radius"), DefaultPropertyValue(5f), ToolTip
         (
-            "Ta"
+            "The cursor will not move if it has not moved this much. Unit is raw data."
         )]
         public float rInner { 
-            set => _rInner = Math.Clamp(value, 1f, 100f);
+            set => _rInner = Math.Clamp(value, 0f, 1000000.0f);
             get => _rInner;
         }
         public float _rInner;
+
+        [Property("Outer Radial Mult"), DefaultPropertyValue(2f), ToolTip
+        (
+            "Useful values range from 0 to ~10.\n" +
+            "A slight latency compromise to be made if hovering."
+        )]
+        public float oMult { 
+            set => _oMult = Math.Clamp(value, 0f, 1000000.0f);
+            get => _oMult;
+        }
+        public float _oMult;
 
         [Property("wire"), DefaultPropertyValue(true), ToolTip
         (
@@ -164,9 +166,10 @@ namespace Saturn
         )]
         public bool wire { set; get; }
 
-        [Property("msOverride"), DefaultPropertyValue(0f), ToolTip
+        [Property("msOverride"), DefaultPropertyValue(3.3f), ToolTip
         (
-            "Ta"
+            "You should know what you are doing if you change this from 0.\n" +
+            "Wacom PTK-x70 - make this 3.3."
         )]
         public float msOverride { 
             set => _msOverride = Math.Clamp(value, 0f, 100f);
@@ -191,9 +194,7 @@ namespace Saturn
                 else {
                     emergency = 10;
                 }
-                consume = true;
                 moveOk = false;
-
                       
                 StatUpdate(report);
                 ConditionalUpdate();
@@ -205,9 +206,10 @@ namespace Saturn
                     bottom = 0;
                 }
 
-                if (!vtToggle | wire) {
+             //   Console.WriteLine("------");
+
+                if (wire) {
                     UpdateState();
-                    
                 }
             }
             else {
@@ -222,49 +224,39 @@ namespace Saturn
                 
                 updateTime = (float)updateStopwatch.Restart().TotalMilliseconds;
 
-                if (vtToggle) {
-                    if (consume) {
-                        alpha1 = 0;
-
-                        if ((alpha0PreservationSociety > 1) && (top < 1)) {
-                            top = 0.9f * (alpha0PreservationSociety - 1);
-                            bottom = 0;
-                        }
-                        else top = 0;
+                if (consume) {
+                    alpha1 = 0;
+                    if ((alpha0PreservationSociety > 1) && (top < 1)) {
+                        top = 0.9f * (alpha0PreservationSociety - 1);
+                        bottom = 0;
                     }
+                    else top = 0;
+                }
                     
-                    ohmygodbruh = (float)(reportStopwatch.Elapsed.TotalSeconds * Frequency / reportMsAvg) * (expect);
+                ohmygodbruh = (float)(reportStopwatch.Elapsed.TotalSeconds * Frequency / reportMsAvg) * (expect);
 
-                    alpha0 = ((1 - top) * ohmygodbruh) + top;
+                alpha0 = ((1 - top) * ohmygodbruh) + top;
 
-                    alpha0PreservationSociety = alpha0 + (expect / reportMsAvg);
+                alpha0PreservationSociety = alpha0 + (expect / reportMsAvg);
                 
-                    alpha0 += (vtlimiter - 1);
+                alpha0 += (vtlimiter - 1);
 
-                    alpha0 = Math.Clamp(alpha0, (vtlimiter - 1), pathpreservationsociety);
+                alpha0 = Math.Clamp(alpha0, (vtlimiter - 1), pathpreservationsociety);
 
-                    trDir = Trajectory(stdir[0], stdir[1], stdir[2], alpha0);
-                    sdirt1 = Trajectory(a1stdir[0], a1stdir[1], a1stdir[2], alpha0 + 0.5f);
-                    trDir = Vector2.Lerp(trDir, sdirt1, pps4);
-                    LineDrive();
-                    ldDir = WireAdjust(ldDir / (reportMsAvg / (expect)), expect, updateTime, wire);
-                }
-                else {
-                    if (consume) {
-                        ldDir = stdir[0];
-                    }
-                    else { 
-                        ldDir = Vector2.Zero;
-                    }
-                }
-
+                trDir = Trajectory(stdir[0], stdir[1], stdir[2], alpha0);
+                sdirt1 = Trajectory(a1stdir[0], a1stdir[1], a1stdir[2], alpha0 + 0.5f);
+                trDir = Vector2.Lerp(trDir, sdirt1, pps4);
+                LD();
+                ldDir = WireAdjust(ldDir / (reportMsAvg / (expect)), expect, updateTime, wire);
+                
+    
                 ldOutput += ldDir;
 
                 RF();
 
                 if (moveOk && emergency == 0 && !liftorpress) {
-                    Vector2 pointaaaa = pos[0] + (trDir - (trDir - (stdir[1] / reportMsAvg))) * Math.Max(0, alpha0 - (vtlimiter - 1)) * (reportMsAvg / expect);
-                    ldOutput = Vector2.Lerp(ldOutput, pointaaaa, WireAdjust(dumbWeight, expect, updateTime, wire));
+                    Vector2 hard = pos[0] + (trDir - (trDir - (stdir[1] / reportMsAvg))) * Math.Max(0, alpha0 - (vtlimiter - 1)) * (reportMsAvg / expect);
+                    ldOutput = Vector2.Lerp(ldOutput, hard, WireAdjust(dumbWeight, expect, updateTime, wire));
                     ldOutput = Vector2.Lerp(ldOutput, pos[0], dumbWeight * FSmoothstep(accel[0], -10f, -200f));
                 }
               
@@ -295,38 +287,17 @@ namespace Saturn
                     return;
                 }
 
-           
-
-                lastOutputPos = report.Position;
-
-    
-
-                
-                
-                
-                consume = false;
-                
-               
-
-            //    Console.WriteLine(report.Position - pos[0]);
-
-              //  Plot();
-
-            
-                
                 OnEmit();
             }
         }
 
         void StatUpdate(ITabletReport report) {
-            
             InsertAtFirst(pos, report.Position);
             InsertAtFirst(pressure, report.Pressure);
             InsertAtFirst(dir, pos[0] - pos[1]);
             InsertAtFirst(vel, dir[0].Length());
             InsertAtFirst(ddir, dir[0] - dir[1]);
             InsertAtFirst(accel, vel[0] - vel[1]);
-            
             InsertAtFirst(pointaccel, ddir[0].Length());
             DAC();
             
@@ -348,14 +319,42 @@ namespace Saturn
             pps4 = FSmoothstep(stdir[3].Length() - stdir[0].Length(), -15, 0) - FSmoothstep(stdir[3].Length() - stdir[0].Length(), 0, 15);
 
             if (pressure[0] == 0)
-                pathpreservationsociety = Math.Min(pathpreservationsociety, 3 - FSmoothstep(Vector2.Distance(ddir[0], ddir[1]), 30, 69));
+                pathpreservationsociety = Math.Min(pathpreservationsociety, 3 - FSmoothstep(Vector2.Distance(ddir[0], ddir[1]), 30, 69));   
+        }
+
+        void ConditionalUpdate() {
+            if (!(accel[0] > 0 && accel[1] < 0) && !(accel[0] < 0 && accel[1] > 0)) {
+                if (!clusterjumping) {
+                    clusterpos1 = clusterpos0;
+                    clusterdir1 = clusterdir0;
+                    peakAccel0 = accel[0];
+                    ctozero = new Line(clusterdir1, Vector2.Zero, namelesstime1);
+                    clusterjumping = true;
+                }
+                namelesstime0++;      
+                if (peakAccel0 < accel[0]) {
+                    peakAccel0 = accel[0];
+                }
+            }
+            else {
+                clusterpos0 = pos[0];
+                namelesstime1 = namelesstime0;
+                clusterdir0 = stdir[0];
+                peakAccel1 = peakAccel0;
+                clusterjumping = false;
+                namelesstime0 = 1;
+            }
+            
+            if (accel[1] > 0 && accel[0] < 0) {
+                arc = (dir[0] - dir[2]) / 2;
+            }
             
         }
 
         void DAC() {
             if (dacToggle) {
                 
-                float vscale = FSmoothstep(vel[0], 3, 25);
+                float vscale = FSmoothstep(vel[0], 5, 15);
                 float scale = FSmootherstep(Math.Max(pointaccel[0], Vector2.Distance(stdir[0], dir[0])), Math.Max(0, vscale * dacInner), 0.01f + (vscale * dacOuter));
                 Vector2 stabilized = Vector2.Lerp(stdir[0], dir[0], scale);
                 if (vel[0] >= 1 && vel[1] >= 1 && vel[0] < 100 && stabilized.Length() > 1) {
@@ -371,7 +370,7 @@ namespace Saturn
             }
         }
 
-        void LineDrive() {
+        void LD() {
             if (ldToggle) {
             if (clusterjumping && accel[0] < 0 && namelesstime1 > 6 && peakAccel1 > 25) {
                 linedrivetime = Math.Min(linedrivetime + 1, namelesstime1);
@@ -409,27 +408,27 @@ namespace Saturn
                 ringOutput += ringDir;
 
                 if (ringDir.Length() > 0 || dist.Length() > rInner || accel[0] < -10 || vel[0] > 10 * rInner) {
-                ringOutput = capDist(ringOutput, Vector2.Lerp(ringOutput, ldOutput, 1f), 2f);
+                ringOutput = capDist(ringOutput, Vector2.Lerp(ringOutput, ldOutput, FSmoothstep(ringDir.Length(), -1, oMult * rInner)), 2000f);
                 ringOutput = Vector2.Lerp(ringOutput, ldOutput, FSmoothstep(accel[0], -10, -200));
                 moveOk = true;
                 }
+               // Console.WriteLine(ringOutput - ldOutput);
             }
             else {
                 moveOk = true;
                 ringOutput = ldOutput;
             }
-
         }
 
         void AEMA() {
             float weight = 1;
             if (aemaToggle) {
                 stockWeight = weight;
-                float mod1 = (1f - stockWeight) * (FSmoothstep(vel[0], 25, 75) - FSmoothstep(vel[0], 175, 250)) * FSmoothstep(MathF.Abs(accel[0]), 50, 10);
+                float mod1 = (1f - stockWeight) * (FSmoothstep(vel[0], 25, 50) - FSmoothstep(vel[0], 150, 250)) * FSmoothstep(MathF.Abs(accel[0]), 30, 10);
                 float dist = Vector2.Distance(aemaOutput, ringOutput);
                 float mod2 = mod1 * FSmoothstep(dist, 0, 50);
-                float mod3 = (1f - stockWeight) * FSmoothstep(dist, 0, 100) * FSmoothstep(accel[0] - Math.Min(0, jerk[0]), -10, -30);
-                float mod4 = 2 * stockWeight * MathF.Pow(FSmoothstep(dist, 2500, 500) * FSmoothstep(accel[0] + Math.Max(0, jerk[0]), 10, 30), 2);
+                float mod3 = (1f - stockWeight) * FSmoothstep(dist, 0, 100) * FSmoothstep(accel[0] + Math.Min(0, -jerk[0]), -10, -30);
+                float mod4 = (1 + MathF.Log10(Math.Max(aResponse, 0.5f))) * stockWeight * MathF.Pow(FSmoothstep(dist, 2500 * aResponse, (500 * aResponse) - 1.0f) * FSmoothstep(accel[0] + Math.Max(0, jerk[0]), 10, 30), 2) * Math.Max(0, DotNorm(ddir[0], dir[0]));
                 weight += Math.Max(mod2, mod3) - mod4;
                 weight = WireAdjust(Math.Max(0, weight), expect, updateTime, wire);
               //  Console.WriteLine(weight);
@@ -440,46 +439,6 @@ namespace Saturn
         float WireAdjust(float a, float be, float br, bool w) => w ? a * (br / be) : a;
 
         Vector2 WireAdjust(Vector2 a, float be, float br, bool w) => w ? a * (br / be) : a;
-
-        void ConditionalUpdate() {
-            if (!(accel[0] > 0 && accel[1] < 0) && !(accel[0] < 0 && accel[1] > 0)) {
-                if (!clusterjumping) {
-                    clusterpos1 = clusterpos0;
-                    clusterdir1 = clusterdir0;
-                    peakAccel0 = accel[0];
-                    ctozero = new Line(clusterdir1, Vector2.Zero, namelesstime1);
-                    clusterjumping = true;
-                }
-                namelesstime0++;      
-                if (peakAccel0 < accel[0]) {
-                    peakAccel0 = accel[0];
-                }
-            }
-            else {
-                clusterpos0 = pos[0];
-                namelesstime1 = namelesstime0;
-                clusterdir0 = stdir[0];
-                peakAccel1 = peakAccel0;
-                clusterjumping = false;
-                namelesstime0 = 1;
-            }
-
-            if (Math.Abs(accel[0]) > 4 && !(accel[0] > 0 && accel[1] < 0) && !(accel[0] < 0 && accel[1] > 0)) {
-                if (!magclusterjumping) {
-                    magcluster1 = magcluster0;
-                    magclusterjumping = true;
-                }
-            }
-            else {
-                magcluster0 = stdir[0].Length();
-                magclusterjumping = false;
-            }
-            
-            if (accel[1] > 0 && accel[0] < 0) {
-                arc = (dir[0] - dir[2]) / 2;
-            }
-            
-        }
 
         void Plot() {
         
@@ -510,7 +469,7 @@ namespace Saturn
 
         Vector2 Default(Vector2 a, Vector2 b) => vec2IsFinite(a) ? a : b;
 
-        Vector2 MinLength(Vector2 a, Vector2 b) => a.Length() <= b.Length() ? a : b;
+        Vector2 MinLength(Vector2 a, Vector2 b) => a.LengthSquared() <= b.LengthSquared() ? a : b;
 
         Vector2 capDist(Vector2 a, Vector2 b, float d) => a + Math.Min(Vector2.Distance(b, a), d) * (vec2IsFinite(Vector2.Normalize(b - a)) ? Vector2.Normalize(b - a) : Vector2.Zero); 
 
@@ -715,8 +674,7 @@ namespace Saturn
         float ohmygodbruh;
         Vector2 clusterpos0, clusterpos1;
         Vector2 clusterdir0, clusterdir1;
-        float magcluster0, magcluster1;
-        Line plane, ctozero, turnmirror;
+        Line ctozero;
         bool clusterjumping, magclusterjumping;
         float stmag0, stmag1;
         float reportTime;
