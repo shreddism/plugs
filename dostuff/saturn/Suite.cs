@@ -202,6 +202,7 @@ namespace Saturn
                     emergency = 5;
                 }
                 moveOk = false;
+                consume = true;
                       
                 StatUpdate(report);
                 ConditionalUpdate();
@@ -292,6 +293,10 @@ namespace Saturn
                     OnEmit();
                     return;
                 }
+
+                consume = false;
+
+             //   Console.WriteLine(report.Position - pos[0]);
 
                 OnEmit();
             }
