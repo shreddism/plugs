@@ -18,10 +18,8 @@ namespace Saturn
 
         [Property("Velocity Trajectory Limiter"), DefaultPropertyValue(3.0f), ToolTip
         (
-            "2 = zero prediction, only interpolation, 3 = only prediction under sufficiently accelerating scenarios.\n" +
-            "If on a Wacom Pro of 200hz or 300hz, put this to 3.\n" +
-            "From testing my PTK-470, the input is so noiseless that prediction can be made with imperceptible error.\n" +
-            "This could be because of its resolution, which is quadruple normal. (Wacom Pro 200hz tablets have the same resolution)\n" +
+            "2 = zero prediction, only interpolation, 3 = only prediction under sufficient situations.\n" +
+            "If on a Intuos Pro (200hz or 300hz), put this to 3.\n" +
             "If not, try lower, and if you don't like the feel of it, try the standalone filters.\n" 
         )]
         public float vtlimiter { 
@@ -89,16 +87,15 @@ namespace Saturn
             "Devocub/Hawku Antichatter/Smoothing uses EMA at 1000hz. The 'Latency' label in milliseconds\n" +
             "is probably just a remnant of ancient times.\n" +
             "EMA means 'Exponential Moving Average' where the formula is outputpos = ((1 - weight) * outputpos) + (weight * inputpos).\n" +
-            "The issue that Devocub/Hawku has is that at a high enough weight (low latency), it ends up\n" +
+            "The issue that Devocub and Hawku have is that at a high enough weight (low latency), it ends up\n" +
             "skipping a large distance to get mostly to raw in the first 2 or so refreshes after a report,\n" +
             "and staying between where it landed itself and raw position for the next (whatever amount) of updates before the next report.\n" +
             "This is because it simply runs EMA at a disjointed frequency from its information update without adjustment,\n" +
-            "which is not how EMA works at all, and if it were adjusted to shift its behavior to even spacing when the weight approaches 1,\n" +
+            "which is not how EMA should work at all, and if it were adjusted to shift its behavior to even spacing when the weight approaches 1,\n" +
             "it would eventually converge to a filter that lerps between last position and current raw position using an expected \n" +
             "amount of time to the next report.\n\n" +
             "This does not have this issue, though, because we are applying EMA to output, and even if wired, time is adjusted for.\n" +
-            "For context, Temporal Resampler has the opportunity to also run EMA at 1000hz to a decent degree of success, \n" +
-            "especially because it is mostly velocity-congruent despite not even focusing on that because of how good it is, but it ends up favoring\n" +
+            "For context, Temporal Resampler has the opportunity to also run EMA at 1000hz, but it ends up favoring\n" +
             "simply running its input point for trajectory through it at report rate, which may not be preferable.\n" +
             "Do not use this after another asynchronous filter; the other smoothing is more well-suited."
 
@@ -118,7 +115,7 @@ namespace Saturn
 
         [Property("Accel Response Aggressiveness"), DefaultPropertyValue(0f), ToolTip
         (
-            "Useful values range between 0 and 1, or perhaps above in certain cases.\n" +
+            "Useful values range between 0 and 2.\n" +
             "Do not put above 0 if you hover, as reporting becomes buggy.\n" +
             "Makes aim 'snappier' on sharp accel."
         )]
@@ -169,13 +166,23 @@ namespace Saturn
         [Property("msOverride"), DefaultPropertyValue(3.3f), ToolTip
         (
             "You should know what you are doing if you change this from 0.\n" +
-            "Wacom PTK-x70 - make this 3.3."
+            "Wacom PTK-x70 - make this 3.3 if using given pen, otherwise you are on your own."
         )]
         public float msOverride { 
             set => _msOverride = Math.Clamp(value, 0f, 100f);
             get => _msOverride;
         }
         public float _msOverride;
+
+        [Property("Area Scale"), DefaultPropertyValue(1f), ToolTip
+        (
+            "Multiplies every area-subjective threshold."
+        )]
+        public float areaScale { 
+            set => _areaScale = Math.Clamp(value, 0.2f, 5f);
+            get => _areaScale;
+        }
+        public float _areaScale;
 
         public event Action<IDeviceReport> Emit;
 
@@ -192,7 +199,7 @@ namespace Saturn
                     emergency--;
                 }
                 else {
-                    emergency = 10;
+                    emergency = 5;
                 }
                 moveOk = false;
                       
@@ -248,7 +255,6 @@ namespace Saturn
                 trDir = Vector2.Lerp(trDir, sdirt1, pps4);
                 LD();
                 ldDir = WireAdjust(ldDir / (reportMsAvg / (expect)), expect, updateTime, wire);
-                
     
                 ldOutput += ldDir;
 
@@ -257,7 +263,7 @@ namespace Saturn
                 if (moveOk && emergency == 0 && !liftorpress) {
                     Vector2 hard = pos[0] + (trDir - (trDir - (stdir[1] / reportMsAvg))) * Math.Max(0, alpha0 - (vtlimiter - 1)) * (reportMsAvg / expect);
                     ldOutput = Vector2.Lerp(ldOutput, hard, WireAdjust(dumbWeight, expect, updateTime, wire));
-                    ldOutput = Vector2.Lerp(ldOutput, pos[0], dumbWeight * FSmoothstep(accel[0], -10f, -200f));
+                    ldOutput = Vector2.Lerp(ldOutput, pos[0], dumbWeight * FSmoothstep(accel[0], -10 * areaScale, -200 * areaScale));
                 }
               
                 AEMA();
@@ -267,18 +273,18 @@ namespace Saturn
                 report.Pressure = pressure[0];
 
                 if (!vec2IsFinite(report.Position + ringOutput + iRingPos0 + ldOutput) | liftorpress) {
-                    report.Position = Trajectory(pos[2], pos[1], pos[0], ohmygodbruh + 1);
+                    report.Position = pos[0];
                     aemaOutput = pos[0];
                     ldOutput = pos[0];
                     ringOutput = pos[0];
                     iRingPos0 = pos[0];
-                    emergency = 3;
+                    emergency = 5;
                     OnEmit();
                     return;
                 }
 
                 if (emergency > 0) {
-                    report.Position = Trajectory(pos[2], pos[1], pos[0], ohmygodbruh + 1);
+                    report.Position = pos[0];
                     ldOutput = pos[0];
                     aemaOutput = pos[0];
                     ringOutput = pos[0];
@@ -353,12 +359,12 @@ namespace Saturn
 
         void DAC() {
             if (dacToggle) {
-                
-                float vscale = FSmoothstep(vel[0], 5, 15);
-                float scale = FSmootherstep(Math.Max(pointaccel[0], Vector2.Distance(stdir[0], dir[0])), Math.Max(0, vscale * dacInner), 0.01f + (vscale * dacOuter));
+                float vscale = FSmoothstep(vel[0], 5, 15 + dacOuter);
+                float scale = MathF.Pow(FSmoothstep(Math.Max(pointaccel[0], Vector2.Distance(stdir[0], dir[0])), Math.Max(0, vscale * dacInner), 0.01f + (vscale * dacOuter)), 3);
                 Vector2 stabilized = Vector2.Lerp(stdir[0], dir[0], scale);
-                if (vel[0] >= 1 && vel[1] >= 1 && vel[0] < 100 && stabilized.Length() > 1) {
-                    float ascale = Math.Max(Math.Abs(accel[0]), Math.Abs(stabilized.Length() - stdir[0].Length()));
+                Console.WriteLine(scale);
+                if (vel[0] >= 1 && vel[1] >= 1 && vel[0] < 100 * areaScale && stabilized.Length() > 1) {
+                    float ascale = Math.Max(Math.Abs(accel[0]), Math.Abs(vel[0] - stdir[0].Length()));
                     stabilized = Vector2.Lerp(stabilized, stdir[0].Length() * Vector2.Normalize(stabilized), vscale * (1 - scale) * (FSmoothstep(ascale, 0, dacOuter)));
                 }
             InsertAtFirst(stdir, stabilized);
@@ -372,9 +378,9 @@ namespace Saturn
 
         void LD() {
             if (ldToggle) {
-            if (clusterjumping && accel[0] < 0 && namelesstime1 > 6 && peakAccel1 > 25) {
+            if (clusterjumping && accel[0] < 0 && namelesstime1 > 6 && peakAccel1 > 25 * areaScale) {
                 linedrivetime = Math.Min(linedrivetime + 1, namelesstime1);
-                float scale1 = MathF.Pow(Math.Max(0.01f, DotNorm(trDir - clusterdir1, Vector2.Zero - clusterdir1)), 9);
+                float scale1 = MathF.Pow(DotNorm(trDir - clusterdir1, Vector2.Zero - clusterdir1, 0), 5);
                 float time1 = Line.SelfSmoothstep((linedrivetime + (vtlimiter - 3)) / namelesstime1);
                 float time2 = Line.SelfSmoothstep((linedrivetime + (vtlimiter - 2)) / namelesstime1);
                 Vector2 dist = ctozero.SegmentDistanceToPoint(trDir, time1, time2);
@@ -397,7 +403,6 @@ namespace Saturn
 
         void RF() {
             if (ringToggle) {
-                float mult = 20 + Math.Max(100 * DotNorm(ddir[0], dir[0]) * FSmootherstep((pointaccel[0] + Math.Max(jerk[0], 0)) / (MathF.Log(MathF.E * vel[0] + 1) + 1), 5, 10), -20);
                 ringInputPos1 = ringInputPos0;
                 ringInputPos0 = ldOutput;
                 ringInputDir = ringInputPos0 - ringInputPos1;
@@ -407,9 +412,9 @@ namespace Saturn
                 ringDir = iRingPos0 - iRingPos1;
                 ringOutput += ringDir;
 
-                if (ringDir.Length() > 0 || dist.Length() > rInner || accel[0] < -10 || vel[0] > 10 * rInner) {
+                if (ringDir.Length() > 0 || dist.Length() > rInner || accel[0] < -10  * areaScale|| vel[0] > 10 * rInner) {
                 ringOutput = capDist(ringOutput, Vector2.Lerp(ringOutput, ldOutput, FSmoothstep(ringDir.Length(), -1, oMult * rInner)), 2000f);
-                ringOutput = Vector2.Lerp(ringOutput, ldOutput, FSmoothstep(accel[0], -10, -200));
+                ringOutput = Vector2.Lerp(ringOutput, ldOutput, FSmoothstep(accel[0], -10 * areaScale, -200 * Scale));
                 moveOk = true;
                 }
                // Console.WriteLine(ringOutput - ldOutput);
@@ -423,12 +428,12 @@ namespace Saturn
         void AEMA() {
             float weight = 1;
             if (aemaToggle) {
-                stockWeight = weight;
-                float mod1 = (1f - stockWeight) * (FSmoothstep(vel[0], 25, 50) - FSmoothstep(vel[0], 150, 250)) * FSmoothstep(MathF.Abs(accel[0]), 30, 10);
+                weight = stockWeight;
+                float mod1 = (1f - stockWeight) * (FSmoothstep(vel[0], 25 * areaScale, 50 * areaScale) - FSmoothstep(vel[0], 150 * areaScale, 250 * areaScale)) * FSmoothstep(MathF.Abs(accel[0]), 30 * areaScale, 10 * areaScale);
                 float dist = Vector2.Distance(aemaOutput, ringOutput);
-                float mod2 = mod1 * FSmoothstep(dist, 0, 50);
-                float mod3 = (1f - stockWeight) * FSmoothstep(dist, 0, 100) * FSmoothstep(accel[0] + Math.Min(0, -jerk[0]), -10, -30);
-                float mod4 = (1 + MathF.Log10(Math.Max(aResponse, 0.5f))) * stockWeight * MathF.Pow(FSmoothstep(dist, 2500 * aResponse, (500 * aResponse) - 1.0f) * FSmoothstep(accel[0] + Math.Max(0, jerk[0]), 10, 30), 2) * Math.Max(0, DotNorm(ddir[0], dir[0]));
+                float mod2 = mod1 * FSmoothstep(dist, 0, 50 * areaScale);
+                float mod3 = (1f - stockWeight) * FSmoothstep(dist, 0, 100 * areaScale) * FSmoothstep(accel[0] + Math.Min(0, -jerk[0]), -10 * areaScale, -30 * areaScale);
+                float mod4 = (1 + MathF.Log10(Math.Max(aResponse, 0.75f))) * stockWeight * MathF.Pow(FSmoothstep(dist, 2500 * aResponse * areaScale, (500 * aResponse * areaScale) - 1.0f) * FSmoothstep(accel[0] + Math.Max(0, jerk[0]), 10 * areaScale, 30 * areaScale), 2) * DotNorm(ddir[0], dir[0], 0);
                 weight += Math.Max(mod2, mod3) - mod4;
                 weight = WireAdjust(Math.Max(0, weight), expect, updateTime, wire);
               //  Console.WriteLine(weight);
@@ -459,11 +464,9 @@ namespace Saturn
             
         }
 
-        float DotNorm(Vector2 a, Vector2 b) {
-            if (a != Vector2.Zero && b != Vector2.Zero)
-                return Vector2.Dot(Vector2.Normalize(a), Vector2.Normalize(b));
-            else return 1;
-        }
+        float DotNorm(Vector2 a, Vector2 b) => Vector2.Dot(Vector2.Normalize(a), Vector2.Normalize(b));
+
+        float DotNorm(Vector2 a, Vector2 b, float x) => (a != Vector2.Zero && b != Vector2.Zero) ? Vector2.Dot(Vector2.Normalize(a), Vector2.Normalize(b)) : x;
 
         float Default(float a, float b) => float.IsFinite(a) ? a : b;
 

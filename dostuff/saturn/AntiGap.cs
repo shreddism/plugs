@@ -14,7 +14,7 @@ namespace Saturn
         {
         }
 
-        public override PipelinePosition Position => PipelinePosition.PostTransform;
+        public override PipelinePosition Position => PipelinePosition.PreTransform;
 
         [Property("Hawku/Devocub Toggle"), DefaultPropertyValue(true), ToolTip
         (
