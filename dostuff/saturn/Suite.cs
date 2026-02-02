@@ -16,7 +16,7 @@ namespace Saturn
 
         public override PipelinePosition Position => PipelinePosition.PreTransform;
 
-        [Property("Velocity Trajectory Limiter"), DefaultPropertyValue(3.0f), ToolTip
+        [Property("Velocity Trajectory Limiter"), DefaultPropertyValue(2.5f), ToolTip
         (
             "2 = zero prediction, only interpolation, 3 = only prediction under sufficient situations.\n" +
             "If on a Intuos Pro (200hz or 300hz), put this to 3.\n" +
@@ -82,7 +82,7 @@ namespace Saturn
         }
         public float _ldOuter;
 
-        [Property("Adaptive EMA Toggle"), DefaultPropertyValue(false), ToolTip
+        [Property("Adaptive EMA Toggle"), DefaultPropertyValue(true), ToolTip
         (
             "Devocub/Hawku Antichatter/Smoothing uses EMA at 1000hz. The 'Latency' label in milliseconds\n" +
             "is probably just a remnant of ancient times.\n" +
@@ -113,7 +113,7 @@ namespace Saturn
         }
         public float _stockWeight;
 
-        [Property("Accel Response Aggressiveness"), DefaultPropertyValue(0f), ToolTip
+        [Property("Accel Response Aggressiveness"), DefaultPropertyValue(1.5f), ToolTip
         (
             "Useful values range between 0 and 2.\n" +
             "Do not put above 0 if you hover, as reporting becomes buggy.\n" +
@@ -163,7 +163,7 @@ namespace Saturn
         )]
         public bool wire { set; get; }
 
-        [Property("msOverride"), DefaultPropertyValue(3.3f), ToolTip
+        [Property("msOverride"), DefaultPropertyValue(7.5f), ToolTip
         (
             "You should know what you are doing if you change this from 0.\n" +
             "Wacom PTK-x70 - make this 3.3 if using given pen, otherwise you are on your own."
@@ -174,7 +174,7 @@ namespace Saturn
         }
         public float _msOverride;
 
-        [Property("Area Scale"), DefaultPropertyValue(1f), ToolTip
+        [Property("Area Scale"), DefaultPropertyValue(0.5f), ToolTip
         (
             "Multiplies every area-subjective threshold."
         )]
@@ -313,9 +313,9 @@ namespace Saturn
             DAC();
             
 
-            if ((pressure[0] > 0 && pressure[1] == 0) || (pressure[0] == 0 && pressure[1] > 0))
-            liftorpress = true;
-            else liftorpress = false;
+          //  if ((pressure[0] > 0 && pressure[1] == 0) || (pressure[0] == 0 && pressure[1] > 0))
+         //   liftorpress = true;
+             liftorpress = false;
 
             if (dir[0] == pos[0]) {
                 emergency = 5;
@@ -329,8 +329,8 @@ namespace Saturn
             pathpreservationsociety = 2 + (vtlimiter - 2) * Math.Min(Math.Min(pathpreservationsociety, pps2), pps3);
             pps4 = FSmoothstep(stdir[3].Length() - stdir[0].Length(), -15, 0) - FSmoothstep(stdir[3].Length() - stdir[0].Length(), 0, 15);
 
-            if (pressure[0] == 0)
-                pathpreservationsociety = Math.Min(pathpreservationsociety, 3 - FSmoothstep(Vector2.Distance(ddir[0], ddir[1]), 30, 69));   
+          //  if (pressure[0] == 0)
+            //    pathpreservationsociety = Math.Min(pathpreservationsociety, 3 - FSmoothstep(Vector2.Distance(ddir[0], ddir[1]), 30, 69));   
         }
 
         void ConditionalUpdate() {
@@ -419,7 +419,7 @@ namespace Saturn
 
                 if (ringDir.Length() > 0 || dist.Length() > rInner || accel[0] < -10  * areaScale|| vel[0] > 10 * rInner) {
                 ringOutput = capDist(ringOutput, Vector2.Lerp(ringOutput, ldOutput, FSmoothstep(ringDir.Length(), -1, oMult * rInner)), 2000f);
-                ringOutput = Vector2.Lerp(ringOutput, ldOutput, FSmoothstep(accel[0], -10 * areaScale, -200 * Scale));
+                ringOutput = Vector2.Lerp(ringOutput, ldOutput, FSmoothstep(accel[0], -10 * areaScale, -200 * areaScale));
                 moveOk = true;
                 }
                // Console.WriteLine(ringOutput - ldOutput);

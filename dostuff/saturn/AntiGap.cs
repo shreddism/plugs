@@ -59,7 +59,6 @@ namespace Saturn
 
         [Property("Scale Override"), DefaultPropertyValue(5.0f), ToolTip
         (
-            "To ensure proper order, this filter is post transform, which uses pixels instead of millimeters.\n" +
             "Use this to change the scale of distance."
         )]
         public float scale {
