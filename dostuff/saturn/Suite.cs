@@ -201,8 +201,11 @@ namespace Saturn
                 else {
                     emergency = 5;
                 }
+                Console.WriteLine(reportTime);
                 moveOk = false;
                 consume = true;
+
+                Console.WriteLine("Consume---------");
                       
                 StatUpdate(report);
                 ConditionalUpdate();
@@ -217,6 +220,7 @@ namespace Saturn
              //   Console.WriteLine("------");
 
                 if (wire) {
+                    
                     UpdateState();
                 }
             }
@@ -240,6 +244,9 @@ namespace Saturn
                     }
                     else top = 0;
                 }
+
+                Console.WriteLine(top);
+                Console.WriteLine(bottom);
                     
                 ohmygodbruh = (float)(reportStopwatch.Elapsed.TotalSeconds * Frequency / reportMsAvg) * (expect);
 
@@ -250,6 +257,8 @@ namespace Saturn
                 alpha0 += (vtlimiter - 1);
 
                 alpha0 = Math.Clamp(alpha0, (vtlimiter - 1), pathpreservationsociety);
+
+                Console.WriteLine(alpha0);
 
                 trDir = Trajectory(stdir[0], stdir[1], stdir[2], alpha0);
                 sdirt1 = Trajectory(a1stdir[0], a1stdir[1], a1stdir[2], alpha0 + 0.5f);
@@ -312,6 +321,7 @@ namespace Saturn
             InsertAtFirst(pointaccel, ddir[0].Length());
             DAC();
             
+            Console.WriteLine(dir[0]);
 
           //  if ((pressure[0] > 0 && pressure[1] == 0) || (pressure[0] == 0 && pressure[1] > 0))
          //   liftorpress = true;
@@ -328,6 +338,7 @@ namespace Saturn
             pps3 = FSmoothstep(Vector2.Distance(stdir[0], stdir[1]), dacInner, dacOuter);
             pathpreservationsociety = 2 + (vtlimiter - 2) * Math.Min(Math.Min(pathpreservationsociety, pps2), pps3);
             pps4 = FSmoothstep(stdir[3].Length() - stdir[0].Length(), -15, 0) - FSmoothstep(stdir[3].Length() - stdir[0].Length(), 0, 15);
+            Console.WriteLine(pathpreservationsociety);
 
           //  if (pressure[0] == 0)
             //    pathpreservationsociety = Math.Min(pathpreservationsociety, 3 - FSmoothstep(Vector2.Distance(ddir[0], ddir[1]), 30, 69));   
