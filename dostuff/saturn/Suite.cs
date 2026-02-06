@@ -16,7 +16,7 @@ namespace Saturn
 
         public override PipelinePosition Position => PipelinePosition.PreTransform;
 
-        [Property("Velocity Trajectory Limiter"), DefaultPropertyValue(2.5f), ToolTip
+        [Property("Velocity Trajectory Limiter"), DefaultPropertyValue(3f), ToolTip
         (
             "2 = zero prediction, only interpolation, 3 = only prediction under sufficient situations.\n" +
             "If on a Intuos Pro (200hz or 300hz), put this to 3.\n" +
@@ -62,7 +62,7 @@ namespace Saturn
         }
         public float _dacOuter;
 
-        [Property("Line Drive Toggle"), DefaultPropertyValue(false), ToolTip
+        [Property("Line Drive Toggle"), DefaultPropertyValue(true), ToolTip
         (
             "Experimental feature that may have little effect at all.\n" +
             "Attempts to reduce decel noise on a jump by taking the acceleration time of a jump\n" +
@@ -163,7 +163,7 @@ namespace Saturn
         )]
         public bool wire { set; get; }
 
-        [Property("msOverride"), DefaultPropertyValue(7.5f), ToolTip
+        [Property("msOverride"), DefaultPropertyValue(5f), ToolTip
         (
             "You should know what you are doing if you change this from 0.\n" +
             "Wacom PTK-x70 - make this 3.3 if using given pen, otherwise you are on your own."
