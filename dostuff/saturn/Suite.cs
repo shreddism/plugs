@@ -36,7 +36,7 @@ namespace Saturn
         )]
         public bool dacToggle { set; get; }
 
-        [Property("Directional Antichatter Inner"), DefaultPropertyValue(1f), ToolTip
+        [Property("Directional Antichatter Inner"), DefaultPropertyValue(0f), ToolTip
         (
             "Similar method to Radial Follow. The unit of this is tablet raw data unit per report.\n" +
             "If on a large-small area on a Wacom Pro, try 0-1 respectively.\n" +
@@ -163,7 +163,7 @@ namespace Saturn
         )]
         public bool wire { set; get; }
 
-        [Property("msOverride"), DefaultPropertyValue(5f), ToolTip
+        [Property("msOverride"), DefaultPropertyValue(3.3f), ToolTip
         (
             "You should know what you are doing if you change this from 0.\n" +
             "Wacom PTK-x70 - make this 3.3 if using given pen, otherwise you are on your own."
@@ -201,11 +201,11 @@ namespace Saturn
                 else {
                     emergency = 5;
                 }
-                Console.WriteLine(reportTime);
+            //    Console.WriteLine(reportTime);
                 moveOk = false;
                 consume = true;
 
-                Console.WriteLine("Consume---------");
+            //    Console.WriteLine("Consume---------");
                       
                 StatUpdate(report);
                 ConditionalUpdate();
@@ -245,8 +245,8 @@ namespace Saturn
                     else top = 0;
                 }
 
-                Console.WriteLine(top);
-                Console.WriteLine(bottom);
+            //    Console.WriteLine(top);
+           //     Console.WriteLine(bottom);
                     
                 ohmygodbruh = (float)(reportStopwatch.Elapsed.TotalSeconds * Frequency / reportMsAvg) * (expect);
 
@@ -258,7 +258,7 @@ namespace Saturn
 
                 alpha0 = Math.Clamp(alpha0, (vtlimiter - 1), pathpreservationsociety);
 
-                Console.WriteLine(alpha0);
+             //   Console.WriteLine(alpha0);
 
                 trDir = Trajectory(stdir[0], stdir[1], stdir[2], alpha0);
                 sdirt1 = Trajectory(a1stdir[0], a1stdir[1], a1stdir[2], alpha0 + 0.5f);
@@ -321,10 +321,10 @@ namespace Saturn
             InsertAtFirst(pointaccel, ddir[0].Length());
             DAC();
             
-            Console.WriteLine(dir[0]);
+        //    Console.WriteLine(dir[0]);
 
-          //  if ((pressure[0] > 0 && pressure[1] == 0) || (pressure[0] == 0 && pressure[1] > 0))
-         //   liftorpress = true;
+            if ((pressure[0] > 0 && pressure[1] == 0) || (pressure[0] == 0 && pressure[1] > 0))
+            liftorpress = true;
              liftorpress = false;
 
             if (dir[0] == pos[0]) {
@@ -338,10 +338,10 @@ namespace Saturn
             pps3 = FSmoothstep(Vector2.Distance(stdir[0], stdir[1]), dacInner, dacOuter);
             pathpreservationsociety = 2 + (vtlimiter - 2) * Math.Min(Math.Min(pathpreservationsociety, pps2), pps3);
             pps4 = FSmoothstep(stdir[3].Length() - stdir[0].Length(), -15, 0) - FSmoothstep(stdir[3].Length() - stdir[0].Length(), 0, 15);
-            Console.WriteLine(pathpreservationsociety);
+        //    Console.WriteLine(pathpreservationsociety);
 
-          //  if (pressure[0] == 0)
-            //    pathpreservationsociety = Math.Min(pathpreservationsociety, 3 - FSmoothstep(Vector2.Distance(ddir[0], ddir[1]), 30, 69));   
+            if (pressure[0] == 0)
+                pathpreservationsociety = Math.Min(pathpreservationsociety, 3 - FSmoothstep(Vector2.Distance(ddir[0], ddir[1]), 30, 69));   
         }
 
         void ConditionalUpdate() {
@@ -378,7 +378,7 @@ namespace Saturn
                 float vscale = FSmoothstep(vel[0], 5, 15 + dacOuter);
                 float scale = MathF.Pow(FSmoothstep(Math.Max(pointaccel[0], Vector2.Distance(stdir[0], dir[0])), Math.Max(0, vscale * dacInner), 0.01f + (vscale * dacOuter)), 3);
                 Vector2 stabilized = Vector2.Lerp(stdir[0], dir[0], scale);
-                Console.WriteLine(scale);
+             //   Console.WriteLine(scale);
                 if (vel[0] >= 1 && vel[1] >= 1 && vel[0] < 100 * areaScale && stabilized.Length() > 1) {
                     float ascale = Math.Max(Math.Abs(accel[0]), Math.Abs(vel[0] - stdir[0].Length()));
                     stabilized = Vector2.Lerp(stabilized, stdir[0].Length() * Vector2.Normalize(stabilized), vscale * (1 - scale) * (FSmoothstep(ascale, 0, dacOuter)));
