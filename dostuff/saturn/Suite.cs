@@ -36,7 +36,7 @@ namespace Saturn
         )]
         public bool dacToggle { set; get; }
 
-        [Property("Directional Antichatter Inner"), DefaultPropertyValue(0f), ToolTip
+        [Property("Directional Antichatter Inner 'Radius'"), DefaultPropertyValue(0f), ToolTip
         (
             "Similar method to Radial Follow. The unit of this is tablet raw data unit per report.\n" +
             "If on a large-small area on a Wacom Pro, try 0-1 respectively.\n" +
@@ -49,7 +49,7 @@ namespace Saturn
         }
         public float _dacInner;
 
-        [Property("Directional Antichatter Outer"), DefaultPropertyValue(2f), ToolTip
+        [Property("Directional Antichatter Outer 'Radius'"), DefaultPropertyValue(2f), ToolTip
         (
             "Similar method to Radial Follow. The unit of this is tablet raw data unit per report.\n" +
             "If on a large-small area on a Wacom Pro, try 1-3 respectively.\n" +

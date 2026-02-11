@@ -7,7 +7,7 @@ using OpenTabletDriver.Plugin.Timing;
 
 namespace Saturn
 {
-    [PluginName("Saturn - Anti-Gap Hawku Smoothing/Devocub Antichatter (PreTransform for Relative Mode)")]
+    [PluginName("Saturn - Anti-Gap Hawku Smoothing/Devocub Antichatter")]
     public class AntiGap : AsyncPositionedPipelineElement<IDeviceReport>
     {
         public AntiGap() : base()
@@ -182,12 +182,12 @@ namespace Saturn
              //   Console.WriteLine(modWeight);
 
                 adjWeight = modWeight * timeMult;
-                adjSpringTest = springTest * timeMult;
+                adjspring = spring * timeMult;
 
-                springTestSave = MinLength((adjWeight) * (dist + springTest), remainingDist);
-                outputPos += springTestSave;
-                springTest += springTestSave;
-                springTest *= MathF.Pow(sMult, timeMult);
+                springSave = MinLength((adjWeight) * (dist + spring), remainingDist);
+                outputPos += springSave;
+                spring += springSave;
+                spring *= MathF.Pow(sMult, timeMult);
                 
                 report.Position = outputPos;
                 report.Pressure = press0;
@@ -213,7 +213,7 @@ namespace Saturn
         Vector2 MinLength(Vector2 a, Vector2 b) => a.Length() <= b.Length() ? a : b;
 
         Vector2 outputPos, dist, pos0, evenedDist, remainingDist;
-        Vector2 springTestSave, springTest, adjSpringTest;
+        Vector2 springSave, spring, adjspring;
         float evenedWeight, adjWeight, modWeight;
         float consumeTime, consumeMsAvg;
         float updateTime;
