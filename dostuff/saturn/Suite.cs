@@ -16,7 +16,7 @@ namespace Saturn
 
         public override PipelinePosition Position => PipelinePosition.PreTransform;
 
-        [Property("Velocity Trajectory Limiter"), DefaultPropertyValue(3f), ToolTip
+        [Property("Velocity Trajectory Limiter"), DefaultPropertyValue(2.5f), ToolTip
         (
             "2 = zero prediction, only interpolation, 3 = only prediction under sufficient situations.\n" +
             "If on a Intuos Pro (200hz or 300hz), put this to 3.\n" +
@@ -36,7 +36,7 @@ namespace Saturn
         )]
         public bool dacToggle { set; get; }
 
-        [Property("Directional Antichatter Inner 'Radius'"), DefaultPropertyValue(0f), ToolTip
+        [Property("Directional Antichatter Inner 'Radius'"), DefaultPropertyValue(1f), ToolTip
         (
             "Similar method to Radial Follow. The unit of this is tablet raw data unit per report.\n" +
             "If on a large-small area on a Wacom Pro, try 0-1 respectively.\n" +
@@ -49,7 +49,7 @@ namespace Saturn
         }
         public float _dacInner;
 
-        [Property("Directional Antichatter Outer 'Radius'"), DefaultPropertyValue(2f), ToolTip
+        [Property("Directional Antichatter Outer 'Radius'"), DefaultPropertyValue(3f), ToolTip
         (
             "Similar method to Radial Follow. The unit of this is tablet raw data unit per report.\n" +
             "If on a large-small area on a Wacom Pro, try 1-3 respectively.\n" +
@@ -72,7 +72,7 @@ namespace Saturn
         )]
         public bool ldToggle { set; get; }
 
-        [Property("LD Outer"), DefaultPropertyValue(50f), ToolTip
+        [Property("LD Outer"), DefaultPropertyValue(25f), ToolTip
         (
             "Range of 'gravitational pull.' Only applies if the above toggle is checked."
         )]
@@ -145,7 +145,7 @@ namespace Saturn
         }
         public float _rInner;
 
-        [Property("Outer Radial Mult"), DefaultPropertyValue(2f), ToolTip
+        [Property("Outer Radial Mult"), DefaultPropertyValue(1f), ToolTip
         (
             "Useful values range from 0 to ~10.\n" +
             "A slight latency compromise to be made if hovering."
@@ -163,7 +163,7 @@ namespace Saturn
         )]
         public bool wire { set; get; }
 
-        [Property("msOverride"), DefaultPropertyValue(3.3f), ToolTip
+        [Property("msOverride"), DefaultPropertyValue(7.5f), ToolTip
         (
             "You should know what you are doing if you change this from 0.\n" +
             "Wacom PTK-x70 - make this 3.3 if using given pen, otherwise you are on your own."
@@ -323,9 +323,9 @@ namespace Saturn
             
         //    Console.WriteLine(dir[0]);
 
-            if ((pressure[0] > 0 && pressure[1] == 0) || (pressure[0] == 0 && pressure[1] > 0))
-            liftorpress = true;
-             liftorpress = false;
+         //   if ((pressure[0] > 0 && pressure[1] == 0) || (pressure[0] == 0 && pressure[1] > 0))
+         //   liftorpress = true;
+       //      liftorpress = false;
 
             if (dir[0] == pos[0]) {
                 emergency = 5;
@@ -340,8 +340,8 @@ namespace Saturn
             pps4 = FSmoothstep(stdir[3].Length() - stdir[0].Length(), -15, 0) - FSmoothstep(stdir[3].Length() - stdir[0].Length(), 0, 15);
         //    Console.WriteLine(pathpreservationsociety);
 
-            if (pressure[0] == 0)
-                pathpreservationsociety = Math.Min(pathpreservationsociety, 3 - FSmoothstep(Vector2.Distance(ddir[0], ddir[1]), 30, 69));   
+           // if (pressure[0] == 0)
+           //     pathpreservationsociety = Math.Min(pathpreservationsociety, 3 - FSmoothstep(Vector2.Distance(ddir[0], ddir[1]), 30, 69));   
         }
 
         void ConditionalUpdate() {
