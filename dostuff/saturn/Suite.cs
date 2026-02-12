@@ -277,8 +277,8 @@ namespace Saturn
                 RF();
 
                 if (moveOk && emergency == 0 && !liftorpress) {
-                    Vector2 hard = pos[0] + (trDir - (trDir - (stdir[1] / reportMsAvg))) * Math.Max(0, alpha0 - (vtlimiter - 1)) * (reportMsAvg / expect);
-                    ldOutput = Vector2.Lerp(ldOutput, hard, WireAdjust(dumbWeight, expect, updateTime, wire));
+                  //  Vector2 hard = pos[0] + (trDir - (trDir - (stdir[1] / reportMsAvg))) * Math.Max(0, alpha0 - (vtlimiter - 1)) * (reportMsAvg / expect);
+                    ldOutput = Vector2.Lerp(ldOutput, pos[0], WireAdjust(dumbWeight, expect, updateTime, wire));
                     ldOutput = Vector2.Lerp(ldOutput, pos[0], dumbWeight * FSmoothstep(accel[0], -10 * areaScale, -200 * areaScale));
                 }
               
