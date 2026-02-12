@@ -202,10 +202,10 @@ namespace Saturn
                     emergency = 5;
                 }
 
-                Console.WriteLine("Consume---------");
+              //  Console.WriteLine("Consume---------");
 
         
-                Console.WriteLine(reportTime);
+             //   Console.WriteLine(reportTime);
                 moveOk = false;
                 consume = true;
 
@@ -221,7 +221,7 @@ namespace Saturn
                     bottom = 0;
                 }
 
-                Console.WriteLine("------");
+           //     Console.WriteLine("------");
 
                 if (wire) {
                     
@@ -240,7 +240,7 @@ namespace Saturn
                 
                 updateTime = (float)updateStopwatch.Restart().TotalMilliseconds;
 
-                Console.WriteLine(updateTime);
+              //  Console.WriteLine(updateTime);
 
                 if (consume) {
                     alpha1 = 0;
