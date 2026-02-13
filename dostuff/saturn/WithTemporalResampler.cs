@@ -4,29 +4,35 @@ using OpenTabletDriver.Plugin.Attributes;
 using OpenTabletDriver.Plugin.Output;
 using OpenTabletDriver.Plugin.Tablet;
 using OpenTabletDriver.Plugin.Timing;       
+using System.Numerics;
 
 namespace Saturn
 {
-    [PluginName("Saturn - Suite")]
-    public class Suite : AsyncPositionedPipelineElement<IDeviceReport>
+    [PluginName("Saturn - Normal Tablet Multifilter")]
+    public class suitenonpro : AsyncPositionedPipelineElement<IDeviceReport>
     {
-        public Suite() : base()
+        public suitenonpro() : base()
         {
         }
 
         public override PipelinePosition Position => PipelinePosition.PreTransform;
 
-        [Property("Velocity Trajectory Limiter"), DefaultPropertyValue(3f), ToolTip
+        [Property("Prediction Ratio"), DefaultPropertyValue(0f), ToolTip
         (
-            "2 = zero prediction, only interpolation, 3 = only prediction under sufficient situations.\n" +
-            "If on a Intuos Pro (200hz or 300hz), put this to 3.\n" +
-            "Use the other multifilter otherwise."
+            "Default: 0.5\n" +
+            "Range: 0.0 - 1.0\n\n" +
+
+            "Determines the time distance the filter predicts inputs for each tablet update.\n" +
+            "Prediction brought to you by Kalman filtering.\n" +
+            "0.0 == [slower] 0% predicted, one rps of latency\n" +
+            "0.5 == [balanced] 50% predicted, half rps of latency\n" +
+            "1.0 == [overkill] 100% predicted, no added latency (works best with some smoothing)"
         )]
-        public float vtlimiter { 
-            set => _vtlimiter = Math.Clamp(value, 2.0f, 3.0f);
-            get => _vtlimiter;
+        public float frameShift { 
+            set => _frameShift = Math.Clamp(value, 0.0f, 1.0f);
+            get => _frameShift;
         }
-        public float _vtlimiter;
+        public float _frameShift;
 
         [Property("Reverse EMA"), DefaultPropertyValue(1f), ToolTip
         (
@@ -35,13 +41,12 @@ namespace Saturn
 
             "Removes hardware smoothing, fine-tuned this to your tablet.\n" +
             "1.0 == no effect\n" +
-            "lower == removes more hardware smoothing\n" +
-            "Probably should use the other one if you think you need this."
+            "lower == removes more hardware smoothing"
         )]
         public float reverseSmoothing
         {
-            set => _reverseSmoothing = Math.Clamp(value, 0.001f, 1);
-            get => _reverseSmoothing;
+           set => _reverseSmoothing = Math.Clamp(value, 0.001f, 1);
+           get => _reverseSmoothing;
         }
         public float _reverseSmoothing;
 
@@ -53,7 +58,7 @@ namespace Saturn
         )]
         public bool dacToggle { set; get; }
 
-        [Property("Directional Antichatter Inner 'Radius'"), DefaultPropertyValue(1f), ToolTip
+        [Property("Directional Antichatter Inner 'Radius'"), DefaultPropertyValue(0f), ToolTip
         (
             "Similar method to Radial Follow. The unit of this is tablet raw data unit per report.\n" +
             "If on a large-small area on a Wacom Pro, try 0-1 respectively.\n" +
@@ -66,7 +71,7 @@ namespace Saturn
         }
         public float _dacInner;
 
-        [Property("Directional Antichatter Outer 'Radius'"), DefaultPropertyValue(3f), ToolTip
+        [Property("Directional Antichatter Outer 'Radius'"), DefaultPropertyValue(2f), ToolTip
         (
             "Similar method to Radial Follow. The unit of this is tablet raw data unit per report.\n" +
             "If on a large-small area on a Wacom Pro, try 1-3 respectively.\n" +
@@ -78,26 +83,6 @@ namespace Saturn
             get => _dacOuter;
         }
         public float _dacOuter;
-
-        [Property("Line Drive Toggle"), DefaultPropertyValue(true), ToolTip
-        (
-            "Experimental feature that may have little effect at all.\n" +
-            "Attempts to reduce decel noise on a jump by taking the acceleration time of a jump\n" +
-            "and creating a theoretical noiseless path of velocity in deceleration to zero,\n" +
-            "which has a 'gravitational pull' on interpolated velocity.\n" +
-            "I seriously cannot explain it better. Feel free to leave disabled."
-        )]
-        public bool ldToggle { set; get; }
-
-        [Property("LD Outer"), DefaultPropertyValue(25f), ToolTip
-        (
-            "Range of 'gravitational pull.' Only applies if the above toggle is checked."
-        )]
-        public float ldOuter { 
-            set => _ldOuter = Math.Max(value, 0.1f);
-            get => _ldOuter;
-        }
-        public float _ldOuter;
 
         [Property("Adaptive EMA Toggle"), DefaultPropertyValue(true), ToolTip
         (
@@ -144,7 +129,7 @@ namespace Saturn
 
         const float dumbWeight = 0.025f;
 
-        [Property("Ring Toggle"), DefaultPropertyValue(true), ToolTip
+        [Property("Ring Antichatter Toggle"), DefaultPropertyValue(true), ToolTip
         (
             "Ring Antichatter is relatively simple, making it non-invasive and low-latency.\n" +
             "It works similarly to Radial Follow, but it ensures\n" +
@@ -154,7 +139,7 @@ namespace Saturn
 
         [Property("Ring Radius"), DefaultPropertyValue(5f), ToolTip
         (
-            "The cursor will not move if it has not moved this much. Unit is raw data."
+            "The cursor will not move if it has not moved this much. Unit is raw data. Shouldn't be very high."
         )]
         public float rInner { 
             set => _rInner = Math.Clamp(value, 0f, 1000000.0f);
@@ -162,10 +147,10 @@ namespace Saturn
         }
         public float _rInner;
 
-        [Property("Outer Radial Mult"), DefaultPropertyValue(1f), ToolTip
+        [Property("Outer Radial Mult"), DefaultPropertyValue(2f), ToolTip
         (
             "Useful values range from 0 to ~10.\n" +
-            "A slight latency compromise to be made if hovering."
+            "Shouldn't be very high."
         )]
         public float oMult { 
             set => _oMult = Math.Clamp(value, 0f, 1000000.0f);
@@ -176,14 +161,14 @@ namespace Saturn
         [Property("wire"), DefaultPropertyValue(true), ToolTip
         (
             "You should definitely leave this enabled unless your specific situation requires otherwise.\n" +
+            "If the filter is breaking, disabling this may solve it.\n" +
             "Equivalent to 'extraFrames' from Temporal Resampler."
         )]
         public bool wire { set; get; }
 
-        [Property("msOverride"), DefaultPropertyValue(3.3f), ToolTip
+        [Property("msOverride"), DefaultPropertyValue(7.5f), ToolTip
         (
-            "You should know what you are doing if you change this from 0.\n" +
-            "Wacom PTK-x70 - make this 3.3 if using given pen, otherwise you are on your own."
+            "You should know what you are doing if you change this from 0, or your given default (don't)."
         )]
         public float msOverride { 
             set => _msOverride = Math.Clamp(value, 0f, 100f);
@@ -206,39 +191,35 @@ namespace Saturn
         protected override void ConsumeState()
         {
             if (State is ITabletReport report)
-            {    
+            {   
                 reportTime = (float)reportStopwatch.Restart().TotalMilliseconds;
-                if (reportTime < 25) {
-                    if (msOverride == 0)
+                consumeDelta = reportTime / 1000f;
+                if (reportTime < 25f && reportTime > 0.01f) {
+                    if (msOverride == 0) {
                     reportMsAvg += ((reportTime - reportMsAvg) * 0.1f);
-                    else reportMsAvg = msOverride;
+                    }
+                    else {
+                    reportMsAvg = msOverride;
+                    }
                     if (emergency > 0)
                     emergency--;
+
+                    rpsAvg += (1f / (consumeDelta) - rpsAvg) * (1f - MathF.Exp(-2f * (consumeDelta)));
+                    secAvg = 1f / rpsAvg;
+                    msAvg = 1000f * secAvg;
                 }
                 else {
                     emergency = 5;
+                    ResetValues(report.Position);
                 }
-
-              //  Console.WriteLine("Consume---------");
-
-        
-             //   Console.WriteLine(reportTime);
+            
                 moveOk = false;
                 consume = true;
 
-                
+            
                       
                 StatUpdate(report);
-                ConditionalUpdate();
-                
-                bottom = -1 * Math.Max(alpha0 - vtlimiter, 0);
-
-                if (top > 1f || bottom > 1f) {
-                    top = 0;
-                    bottom = 0;
-                }
-
-           //     Console.WriteLine("------");
+               
 
                 if (wire) {
                     
@@ -254,52 +235,23 @@ namespace Saturn
         {
             if (State is ITabletReport report && PenIsInRange())
             {
+
+                
                 
                 updateTime = (float)updateStopwatch.Restart().TotalMilliseconds;
 
-              //  Console.WriteLine(updateTime);
-
-                if (consume) {
-                    alpha1 = 0;
-                    if ((alpha0PreservationSociety > 1) && (top < 1)) {
-                        top = 0.9f * (alpha0PreservationSociety - 1);
-                        bottom = 0;
-                    }
-                    else top = 0;
-                }
-
-            //    Console.WriteLine(top);
-           //     Console.WriteLine(bottom);
-                    
-                ohmygodbruh = (float)(reportStopwatch.Elapsed.TotalSeconds * Frequency / reportMsAvg) * (expect);
-
-                alpha0 = ((1 - top) * ohmygodbruh) + top;
-
-                alpha0PreservationSociety = alpha0 + (expect / reportMsAvg);
-                
-                alpha0 += (vtlimiter - 1);
-
-                alpha0 = Math.Clamp(alpha0, (vtlimiter - 1), pathpreservationsociety);
-
-             //   Console.WriteLine(alpha0);
-
-                trDir = Trajectory(stdir[0], stdir[1], stdir[2], alpha0);
-                sdirt1 = Trajectory(a1stdir[0], a1stdir[1], a1stdir[2], alpha0 + 0.5f);
-                trDir = Vector2.Lerp(trDir, sdirt1, pps4);
-                LD();
-                ldDir = WireAdjust(ldDir / (reportMsAvg / (expect)), expect, updateTime, wire);
+                float t = 1 + (float)(runningStopwatch.Elapsed - latestReport).TotalSeconds * rpsAvg;
+                t = Math.Clamp(t, 0, 3);
     
-                ldOutput += ldDir;
+                ldOutput = RTrajectory(t, prpos[2], prpos[1], prpos[0]);
 
                 RF();
 
                 if (moveOk && emergency == 0 && !liftorpress) {
-                    Vector2 hard = vtlimiter == 3 ? smpos[0] + (trDir - (trDir - (stdir[1] / reportMsAvg))) * Math.Max(0, alpha0 - (vtlimiter - 1)) * (reportMsAvg / expect) : pos[0];
-                    ldOutput = Vector2.Lerp(ldOutput, hard, WireAdjust(dumbWeight, expect, updateTime, wire));
+                   Vector2 hard = frameShift == 1 ? smpos[0] + (prpos[0] - smpos[0]) : smpos[0];
                     ringOutput = Vector2.Lerp(ringOutput, hard, WireAdjust(dumbWeight, expect, updateTime, wire));
-                    ldOutput = Vector2.Lerp(ldOutput, smpos[0], dumbWeight * FSmoothstep(accel[0], -10 * areaScale, -200 * areaScale));
-                    ringOutput = Vector2.Lerp(ringOutput, smpos[0], dumbWeight * FSmoothstep(accel[0], -10 * areaScale, -200 * areaScale));
-
+                 //   Console.WriteLine(prpos[0]);
+                   ringOutput = Vector2.Lerp(ringOutput, smpos[0], dumbWeight * FSmoothstep(accel[0], -10 * areaScale, -200 * areaScale));
                 }
               
                 AEMA();
@@ -315,6 +267,7 @@ namespace Saturn
                     ringOutput = pos[0];
                     iRingPos0 = pos[0];
                     emergency = 5;
+                    ResetValues(pos[0]);
                     OnEmit();
                     return;
                 }
@@ -325,13 +278,14 @@ namespace Saturn
                     aemaOutput = pos[0];
                     ringOutput = pos[0];
                     iRingPos0 = pos[0];
+                    ResetValues(pos[0]);
                     OnEmit();
                     return;
                 }
 
                 consume = false;
 
-             //   Console.WriteLine(report.Position - pos[0]);
+                
 
                 OnEmit();
             }
@@ -350,17 +304,35 @@ namespace Saturn
             InsertAtFirst(accel, vel[0] - vel[1]);
             InsertAtFirst(pointaccel, ddir[0].Length());
             DAC();
+
+            
+            
+            Vector2 predict = smpos[0];
+            if (frameShift > 0f) {
+                predict = kf.Update(stpos[0], secAvg);
+                predict += (stpos[0] - predict) * (1f - frameShift);
+            }
+
+            tOffset += secAvg - consumeDelta;
+            tOffset *= MathF.Exp(-5f * consumeDelta);
+            tOffset = Math.Clamp(tOffset, -secAvg, secAvg);
+            latestReport = runningStopwatch.Elapsed + TimeSpan.FromSeconds(tOffset);
+
+            InsertAtFirst(prpos, predict);
+
             
         //    Console.WriteLine(dir[0]);
 
-         //   if ((pressure[0] > 0 && pressure[1] == 0) || (pressure[0] == 0 && pressure[1] > 0))
-         //   liftorpress = true;
-       //      liftorpress = false;
+          //  if ((pressure[0] > 0 && pressure[1] == 0) || (pressure[0] == 0 && pressure[1] > 0))
+          //  liftorpress = true;
+         //   liftorpress = false;
 
             if (dir[0] == pos[0]) {
                 emergency = 5;
             }
 
+
+/*
             pathpreservationsociety = Math.Min(Math.Min(stdir[0].Length(), stdir[1].Length()), stdir[2].Length());
             pathpreservationsociety = FSmoothstep(pathpreservationsociety, 0, 20);
             pps2Dir = (stdir[0] + stdir[1]) - (stdir[2] + stdir[2]);
@@ -368,39 +340,12 @@ namespace Saturn
             pps3 = FSmoothstep(Vector2.Distance(stdir[0], stdir[1]), dacInner, dacOuter);
             pathpreservationsociety = 2 + (vtlimiter - 2) * Math.Min(Math.Min(pathpreservationsociety, pps2), pps3);
             pps4 = FSmoothstep(stdir[3].Length() - stdir[0].Length(), -15, 0) - FSmoothstep(stdir[3].Length() - stdir[0].Length(), 0, 15);
+            
         //    Console.WriteLine(pathpreservationsociety);
 
-           // if (pressure[0] == 0)
-           //     pathpreservationsociety = Math.Min(pathpreservationsociety, 3 - FSmoothstep(Vector2.Distance(ddir[0], ddir[1]), 30, 69));   
-        }
-
-        void ConditionalUpdate() {
-            if (!(accel[0] > 0 && accel[1] < 0) && !(accel[0] < 0 && accel[1] > 0)) {
-                if (!clusterjumping) {
-                    clusterpos1 = clusterpos0;
-                    clusterdir1 = clusterdir0;
-                    peakAccel0 = accel[0];
-                    ctozero = new Line(clusterdir1, Vector2.Zero, namelesstime1);
-                    clusterjumping = true;
-                }
-                namelesstime0++;      
-                if (peakAccel0 < accel[0]) {
-                    peakAccel0 = accel[0];
-                }
-            }
-            else {
-                clusterpos0 = pos[0];
-                namelesstime1 = namelesstime0;
-                clusterdir0 = stdir[0];
-                peakAccel1 = peakAccel0;
-                clusterjumping = false;
-                namelesstime0 = 1;
-            }
-            
-            if (accel[1] > 0 && accel[0] < 0) {
-                arc = (dir[0] - dir[2]) / 2;
-            }
-            
+            if (pressure[0] == 0)
+                pathpreservationsociety = Math.Min(pathpreservationsociety, 3 - FSmoothstep(Vector2.Distance(ddir[0], ddir[1]), 30, 69));  
+                */
         }
 
         void DAC() {
@@ -414,37 +359,13 @@ namespace Saturn
                     stabilized = Vector2.Lerp(stabilized, stdir[0].Length() * Vector2.Normalize(stabilized), vscale * (1 - scale) * (FSmoothstep(ascale, 0, dacOuter)));
                 }
             InsertAtFirst(stdir, stabilized);
-            InsertAtFirst(a1stdir, (stdir[1] + stdir[0]) / 2);
+            Vector2 stpoint = stpos[0] + stdir[0];
+            InsertAtFirst(stpos, stpoint);
             }
             else {
                 InsertAtFirst(stdir, dir[0]);
-                InsertAtFirst(a1stdir, (stdir[1] + stdir[0]) / 2);
+                InsertAtFirst(stpos, pos[0]);
             }
-        }
-
-        void LD() {
-            if (ldToggle) {
-            if (clusterjumping && accel[0] < 0 && namelesstime1 > 6 && peakAccel1 > 25 * areaScale) {
-                linedrivetime = Math.Min(linedrivetime + 1, namelesstime1);
-                float scale1 = MathF.Pow(DotNorm(trDir - clusterdir1, Vector2.Zero - clusterdir1, 0), 5);
-                float time1 = Line.SelfSmoothstep((linedrivetime + (vtlimiter - 3)) / namelesstime1);
-                float time2 = Line.SelfSmoothstep((linedrivetime + (vtlimiter - 2)) / namelesstime1);
-                Vector2 dist = ctozero.SegmentDistanceToPoint(trDir, time1, time2);
-                if (!vec2IsFinite(dist)) {
-                    dist = Vector2.Zero;
-                }
-                float scale2 = (dist.Length() / scale1) / (1 / (1 + MathF.Log(ctozero.SegmentPerpendicularDistanceL(trDir, time1, time2) + 1)));
-                float scale3 = Math.Min(vel[0] / 10, 1) * FSmoothstep(scale2, ldOuter, 0);
-                ldDir = trDir - dist * scale3;
-                sense = dist;
-            }
-            else {
-                linedrivetime = 1;
-                sense = Vector2.Zero;
-                ldDir = trDir;
-            }
-            }
-            else ldDir = trDir;
         }
 
         void RF() {
@@ -510,6 +431,13 @@ namespace Saturn
             
         }
 
+        void ResetValues(Vector2 p) {
+            kf = new KalmanVector2(4, p);
+            stpos = Enumerable.Repeat(p, stpos.Length).ToArray();
+            latestReport = runningStopwatch.Elapsed;
+            tOffset = 0;
+        }
+
         float DotNorm(Vector2 a, Vector2 b) => Vector2.Dot(Vector2.Normalize(a), Vector2.Normalize(b));
 
         float DotNorm(Vector2 a, Vector2 b, float x) => (a != Vector2.Zero && b != Vector2.Zero) ? Vector2.Dot(Vector2.Normalize(a), Vector2.Normalize(b)) : x;
@@ -544,164 +472,57 @@ namespace Saturn
             return p2 + t * ((2 * p1) - p2 - tMid) + 0.5f * t * t * (2 * (tMid - p1));
         } 
 
-        public class Line {
-            public Vector2 Start;
-            public Vector2 End;
-            public float Time;
-
-            public Line(Vector2 s, Vector2 e, float t) {
-                Start = s;
-                End = e;
-                Time = t;
-            }
-
-            public static Vector2 Rotate(Vector2 p, float a) {
-                float cosine = MathF.Cos(a);
-                float sine = MathF.Sin(a);
-                return new Vector2((cosine * p.X) - (sine * p.Y), (sine * p.X) + (cosine * p.Y));
-            }
-
-            public void Step(float t) {
-                Vector2 ldir = ((Start - End) / Time) * t;
-                Start += ldir;
-                End += ldir;
-            }
-
-            public Vector2 Curve(Vector2 p1, float t) {
-                Vector2 tMid = 0.5f * (End + Start);
-                return Start + t * ((2 * p1) - Start - tMid) + 0.5f * t * t * (2 * (tMid - p1));
-            } 
-
-            public static float SelfSmoothstep(float x) {
-                x = Math.Clamp(x, 0, 1);
-                return x * x * (3.0f - 2.0f * x);
-            }
-
-            public static float SelfSmootherstep(float x) {
-                x = Math.Clamp(x, 0, 1);
-                return x * x * x * (x * (6.0f * x - 15.0f) + 10.0f);
-            }
-
-            public float ASSSS(float x) => SelfSmoothstep(x + 1 / Time);
-                
-            public float ASSRSS(float x) => SelfSmootherstep(x + 1 / Time);
-
-            public static Vector2 DTP(Vector2 mp, Vector2 me) {
-                float a = MathF.Atan2(me.Y, me.X);
-                float ca = -a;
-                Vector2 rp = Rotate(mp, ca);
-                Vector2 re = Rotate(me, ca);
-                if (rp.X < 0f) return mp;
-                else if (rp.X > re.X) return Rotate(rp - re, a);
-                else return Rotate(new Vector2(0f, rp.Y), a);
-            }
-
-            public static float DTPL(Vector2 mp, Vector2 me) {
-                float ca = -MathF.Atan2(me.Y, me.X);
-                Vector2 rp = Rotate(mp, ca);
-                Vector2 re = Rotate(me, ca);
-                if (rp.X < 0f) return rp.Length();
-                else if (rp.X > re.X) return Vector2.Distance(rp, re);
-                else return rp.Y;
-            }
-
-            public static Vector2 PD(Vector2 mp, Vector2 me) {
-                float a = MathF.Atan2(me.Y, me.X);
-                float ca = -a;
-                Vector2 rp = Rotate(mp, ca);
-                Vector2 re = Rotate(me, ca);
-                if (rp.X < 0f) return Rotate(new Vector2(rp.X, 0f), a);
-                else if (rp.X > re.X) return Rotate(new Vector2(rp.X - re.X, 0f), a);
-                else return Vector2.Zero;
-            }
-
-            public static float PDL(Vector2 mp, Vector2 me) {
-                float ca = -MathF.Atan2(me.Y, me.X);
-                Vector2 rp = Rotate(mp, ca);
-                Vector2 re = Rotate(me, ca);
-                if (rp.X < 0f) return -rp.X;
-                else if (rp.X > re.X) return rp.X - re.X;
-                else return 0f;
-            }
-
-            public Vector2 FullDistanceToPoint(Vector2 p) {
-                return DTP(p - Start, End - Start);
-            }
-
-            public Vector2 SegmentDistanceToPoint(Vector2 p, float t1, float t2) {
-                Vector2 ss = Vector2.Lerp(Start, End, t1);
-                Vector2 se = Vector2.Lerp(Start, End, t2);
-                return DTP(p - ss, se - ss);
-            } 
-
-            public Vector2 DirtyCurveDistanceToPoint(Vector2 p, Vector2 c, float t1, float t2) {
-                Vector2 ss = Curve(c, t1 * 2);
-                Vector2 se = Curve(c, t2 * 2);
-                return DTP(p - ss, se - ss);
-            } 
-
-            public float FullDistanceToPointL(Vector2 p) {
-                return DTPL(p - Start, End - Start);
-            }
-
-            public float SegmentDistanceToPointL(Vector2 p, float t1, float t2) {
-                Vector2 ss = Vector2.Lerp(Start, End, t1);
-                Vector2 se = Vector2.Lerp(Start, End, t2);
-                return DTPL(p - ss, se - ss);
-            } 
-
-            public float DirtyCurveDistanceToPointL(Vector2 p, Vector2 c, float t1, float t2) {
-                Vector2 ss = Curve(c, t1 * 2);
-                Vector2 se = Curve(c, t2 * 2);
-                return DTPL(p - ss, se - ss);
-            } 
-
-            public Vector2 FullPerpendicularDistance(Vector2 p) {
-                return PD(p - Start, End - Start);
-            }
-
-            public Vector2 SegmentPerpendicularDistance(Vector2 p, float t1, float t2) {
-                Vector2 ss = Vector2.Lerp(Start, End, t1);
-                Vector2 se = Vector2.Lerp(Start, End, t2);
-                return PD(p - ss, se - ss);
-            } 
-
-            public Vector2 DirtyCurvePerpendicularDistance(Vector2 p, Vector2 c, float t1, float t2) {
-                Vector2 ss = Curve(c, t1 * 2);
-                Vector2 se = Curve(c, t2 * 2);
-                return PD(p - ss, se - ss);
-            } 
-
-            public float FullPerpendicularDistanceL(Vector2 p) {
-                return PDL(p - Start, End - Start);
-            }
-
-            public float SegmentPerpendicularDistanceL(Vector2 p, float t1, float t2) {
-                Vector2 ss = Vector2.Lerp(Start, End, t1);
-                Vector2 se = Vector2.Lerp(Start, End, t2);
-                return PDL(p - ss, se - ss);
-            } 
-
-            public float DirtyCurvePerpendicularDistanceL(Vector2 p, Vector2 c, float t1, float t2) {
-                Vector2 ss = Curve(c, t1 * 2);
-                Vector2 se = Curve(c, t2 * 2);
-                return PDL(p - ss, se - ss);
-            } 
-
-            public static Vector2 PathDiff(Vector2 s, Vector2 e, Vector2 p) {
-                Vector2 mp = p - s;
-                Vector2 me = e - s;
-                float ca = -MathF.Atan2(me.Y, me.X);
-                Vector2 rp = Rotate(mp, ca);
-                Vector2 re = Rotate(me, ca);
-                return rp - re;
-            }
-        }
-
         void InsertAtFirst<T>(T[] arr, T element)
         {
             for (int p = arr.Length - 1; p > 0; p--) arr[p] = arr[p - 1];
             arr[0] = element;
+        }
+
+        private static readonly int steps = 256;
+        private static readonly float dt = 1f / steps;
+        private float[] arcArr = new float[steps];
+        private float arcTar = 0;
+        private Vector2 _v1, _v2, _v3;
+        private int _floor;
+        Vector2 RTrajectory(float t, Vector2 v3, Vector2 v2, Vector2 v1)
+        {
+            var mid = 0.5f * (v1 + v3);
+            var accel = 2f * (mid - v2);
+            var vel = 2f * v2 - v3 - mid;
+            
+            // if there is acceleration, then start spacing points evenly using integrals
+            if (Vector2.Dot(accel, accel) > 0.001f)
+            {
+                int floor = (int)Math.Floor(t);
+                var _vel = vel + accel * floor;
+
+                // if any of the inputs have changed, recalculate arcArr
+                if ((_floor != floor) || (_v1 != v1) || (_v2 != v2) || (_v3 != v3))
+                {
+                    _v1 = v1;
+                    _v2 = v2;
+                    _v3 = v3;
+                    _floor = floor;
+                    arcTar = 0;
+
+                    for (int _t = 0; _t < steps; _t++)
+                    {
+                        arcArr[_t] = arcTar;
+                        arcTar += (_vel + _t * dt * accel).Length();
+                    }
+                }
+
+                float _arcTar = arcTar * (t - floor);
+
+                for (int _t = 0; _t < steps; _t++)
+                {
+                    if (arcArr[_t] < _arcTar) continue;
+                    t = _t * dt + floor;
+                    break;
+                }
+            }
+
+            return v3 + t * vel + 0.5f * t * t * accel;
         }
 
         const int HMAX = 4;
@@ -713,7 +534,9 @@ namespace Saturn
         Vector2[] stdir = new Vector2[HMAX];
         Vector2[] ddir = new Vector2[HMAX];
         Vector2[] a1stdir = new Vector2[HMAX];
+        Vector2[] stpos = new Vector2[HMAX];
         Vector2[] smpos = new Vector2[HMAX];
+        Vector2[] prpos = new Vector2[HMAX];
         float[] vel = new float[HMAX];
         float[] accel = new float[HMAX];
         float[] jerk = new float[HMAX];
@@ -724,7 +547,6 @@ namespace Saturn
         float ohmygodbruh;
         Vector2 clusterpos0, clusterpos1;
         Vector2 clusterdir0, clusterdir1;
-        Line ctozero;
         bool clusterjumping, magclusterjumping;
         float stmag0, stmag1;
         float reportTime;
@@ -760,6 +582,247 @@ namespace Saturn
         Vector2 dirOfOutput, lastOutputPos;
         float pps3;
 
+        HPETDeltaStopwatch runningStopwatch = new HPETDeltaStopwatch(true);
+
+        KalmanVector2 kf;
+        TimeSpan latestReport = TimeSpan.Zero;
+        float rpsAvg = 200f, tOffset;
+        float msAvg = 5;
+        float secAvg = 0.005f;
+        float consumeDelta;
         float expect => 1000 / Frequency;
     }
+
+    public class KalmanFilter
+    {
+        private readonly double[,] scale_const;
+        private readonly int states;
+        private double lastMeasuredPos;
+
+        private Matrix x;
+        private Matrix P;
+        private Matrix Q;
+        private Matrix R;
+        private Matrix H;
+
+        public KalmanFilter(uint statesNumber, double initialPosition)
+        {
+            states = (int)statesNumber + 2;
+
+            scale_const = new double[states, states];
+            for (int i = 0; i < states; i++)
+            {
+                int fac_n = 1;
+                int fac_i = 0;
+                for (int j = i; j < states; j++)
+                {
+                    scale_const[i, j] = 1d / fac_n;
+                    fac_i++;
+                    fac_n *= fac_i;
+                }
+            }
+
+            lastMeasuredPos = initialPosition;
+            double[,] xArr = new double[states, 1];
+            xArr[0, 0] = initialPosition;
+
+            x = Matrix.Build.DenseOfArray(xArr);
+            P = Matrix.Build.DenseIdentity(states);
+            Q = Matrix.Build.DenseIdentity(states) * 1;
+            R = Matrix.Build.DenseDiagonal(2, 2, 0.0001);
+            H = Matrix.Build.DenseDiagonal(2, states, 1);
+        }
+
+        public double Update(double measuredPos, double dt)
+        {
+            double measuredVel = (measuredPos - lastMeasuredPos) / dt;
+            lastMeasuredPos = measuredPos;
+
+            var z = Matrix.Build.DenseOfArray(new double[,] { { measuredPos }, { measuredVel } });
+
+            double[,] Aarr = new double[states, states];
+            for (int i = 0; i < states; i++) 
+            {
+                double time_pow = 1;
+                for (int j = i; j < states; j++) 
+                {
+                    Aarr[i, j] = time_pow * scale_const[i, j];
+                    time_pow *= dt;
+                } 
+            }
+
+            /*
+                vvvvvvvvvvv
+            4 states should look like this
+            double[,] Aarr = new double[,] {
+                {          1,          dt^1/1!,    dt^2/2!,    dt^3/3!     },
+                {          0,          1,          dt^1/1!,    dt^2/2!     },
+                {          0,          0,          1,          dt^1/1!     },
+                {          0,          0,          0,          1           }
+            }
+            */
+
+            var A = Matrix.Build.DenseOfArray(Aarr);
+
+            x = A * x;
+            P = A * P * A.Transpose() + Q;
+
+            var S = H * P * H.Transpose() + R;
+            var K = P * H.Transpose() * S.Inverse();
+
+            x = x + K * (z - H * x);
+            P = (Matrix.Build.DenseIdentity(states) - K * H) * P;
+
+            return (A * x)[0, 0];
+        }
+    }
+
+    public class KalmanVector2
+    {
+        private KalmanFilter xFilter;
+        private KalmanFilter yFilter;
+
+        public KalmanVector2(uint states, Vector2 initialPosition)
+        {
+            xFilter = new KalmanFilter(states, initialPosition.X);
+            yFilter = new KalmanFilter(states, initialPosition.Y);
+        }
+
+        public Vector2 Update(Vector2 measuredPosition, float dt)
+        {
+            float xState = (float)xFilter.Update(measuredPosition.X, dt);
+            float yState = (float)yFilter.Update(measuredPosition.Y, dt);
+            return new Vector2(xState, yState);
+        }
+    }
+
+    public class Matrix
+    {
+        internal readonly double[,] data;
+
+        public Matrix(double[,] data)
+        {
+            this.data = data;
+        }
+
+        public int Rows => data.GetLength(0);
+        public int Cols => data.GetLength(1);
+
+        public double this[int i, int j]
+        {
+            get => data[i, j];
+            set => data[i, j] = value;
+        }
+
+        public static Matrix operator +(Matrix a, Matrix b)
+        {
+            var result = new double[a.Rows, a.Cols];
+            for (int i = 0; i < a.Rows; i++)
+                for (int j = 0; j < a.Cols; j++)
+                    result[i, j] = a[i, j] + b[i, j];
+            return new Matrix(result);
+        }
+
+        public static Matrix operator -(Matrix a, Matrix b)
+        {
+            var result = new double[a.Rows, a.Cols];
+            for (int i = 0; i < a.Rows; i++)
+                for (int j = 0; j < a.Cols; j++)
+                    result[i, j] = a[i, j] - b[i, j];
+            return new Matrix(result);
+        }
+
+        public static Matrix operator *(Matrix a, Matrix b)
+        {
+            var result = new double[a.Rows, b.Cols];
+            for (int i = 0; i < a.Rows; i++)
+                for (int j = 0; j < b.Cols; j++)
+                    for (int k = 0; k < a.Cols; k++)
+                        result[i, j] += a[i, k] * b[k, j];
+            return new Matrix(result);
+        }
+
+        public static Matrix operator *(Matrix a, double scalar)
+        {
+            var result = new double[a.Rows, a.Cols];
+            for (int i = 0; i < a.Rows; i++)
+                for (int j = 0; j < a.Cols; j++)
+                    result[i, j] = a[i, j] * scalar;
+            return new Matrix(result);
+        }
+
+        public Matrix Transpose()
+        {
+            var result = new double[Cols, Rows];
+            for (int i = 0; i < Rows; i++)
+                for (int j = 0; j < Cols; j++)
+                    result[j, i] = data[i, j];
+            return new Matrix(result);
+        }
+
+        public Matrix Inverse()
+        {
+            if (Rows != Cols) throw new InvalidOperationException("Matrix must be square to invert.");
+
+            int n = Rows;
+            var result = new double[n, n];
+            var identity = Build.DenseIdentity(n).data;
+            var copy = (double[,])data.Clone();
+
+            for (int i = 0; i < n; i++)
+                for (int j = 0; j < n; j++)
+                    result[i, j] = identity[i, j];
+
+            for (int i = 0; i < n; i++)
+            {
+                double diag = copy[i, i];
+                if (diag == 0) throw new InvalidOperationException("Matrix is singular.");
+
+                for (int j = 0; j < n; j++)
+                {
+                    copy[i, j] /= diag;
+                    result[i, j] /= diag;
+                }
+
+                for (int k = 0; k < n; k++)
+                {
+                    if (k == i) continue;
+                    double factor = copy[k, i];
+                    for (int j = 0; j < n; j++)
+                    {
+                        copy[k, j] -= factor * copy[i, j];
+                        result[k, j] -= factor * result[i, j];
+                    }
+                }
+            }
+
+            return new Matrix(result);
+        }
+
+        public static class Build
+        {
+            public static Matrix DenseOfArray(double[,] data) => new Matrix(data);
+
+            public static Matrix DenseIdentity(int size)
+            {
+                var result = new double[size, size];
+                for (int i = 0; i < size; i++) result[i, i] = 1;
+                return new Matrix(result);
+            }
+
+            public static Matrix DenseDiagonal(int rows, int cols, Func<int, double> diagFunc)
+            {
+                var result = new double[rows, cols];
+                for (int i = 0; i < Math.Min(rows, cols); i++)
+                    result[i, i] = diagFunc(i);
+                return new Matrix(result);
+            }
+
+            public static Matrix DenseDiagonal(int rows, int cols, double value)
+            {
+                return DenseDiagonal(rows, cols, _ => value);
+            }
+        }
+    }
 }
+

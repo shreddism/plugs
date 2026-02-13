@@ -16,6 +16,23 @@ namespace Saturn
 
         public PipelinePosition Position => PipelinePosition.PreTransform;
 
+        [Property("Reverse EMA"), DefaultPropertyValue(1f), ToolTip
+        (
+            "Default: 1.0\n" +
+            "Range: 0.0 - 1.0\n\n" +
+
+            "Removes hardware smoothing, fine-tuned this to your tablet.\n" +
+            "1.0 == no effect\n" +
+            "lower == removes more hardware smoothing"
+        )]
+        public float reverseSmoothing
+        {
+            set => _reverseSmoothing = Math.Clamp(value, 0.001f, 1);
+            get => _reverseSmoothing;
+        }
+        public float _reverseSmoothing;
+        
+
         [Property("Directional Antichatter Toggle"), DefaultPropertyValue(true), ToolTip
         (
             "Antichatter, but applied to direction per report's point instead.\n" +
@@ -154,8 +171,8 @@ namespace Saturn
                 RF();
 
                 if (moveOk && emergency == 0 && !liftorpress) {
-                ldOutput = Vector2.Lerp(ldOutput, pos[0], dumbWeight);
-                ldOutput = Vector2.Lerp(ldOutput, pos[0], dumbWeight * FSmoothstep(accel[0], -10 * areaScale, -200 * areaScale));
+                ringOutput = Vector2.Lerp(ringOutput, pos[0], dumbWeight);
+                ringOutput = Vector2.Lerp(ringOutput, pos[0], dumbWeight * FSmoothstep(accel[0], -10 * areaScale, -200 * areaScale));
                 }
 
                 AEMA();
@@ -263,8 +280,12 @@ namespace Saturn
 
         void StatUpdate(ITabletReport report) {
             InsertAtFirst(pos, report.Position);
+            Vector2 smoothed = pos[0];
+            if (reverseSmoothing < 1f && reverseSmoothing > 0f)
+                smoothed = pos[1] + (pos[0] - pos[1]) / reverseSmoothing;
+            InsertAtFirst(smpos, smoothed);
             InsertAtFirst(pressure, report.Pressure);
-            InsertAtFirst(dir, pos[0] - pos[1]);
+            InsertAtFirst(dir, smpos[0] - smpos[1]);
             InsertAtFirst(vel, dir[0].Length());
             InsertAtFirst(ddir, dir[0] - dir[1]);
             InsertAtFirst(accel, vel[0] - vel[1]);
@@ -397,6 +418,7 @@ namespace Saturn
         Vector2[] stdir = new Vector2[HMAX];
         Vector2[] ddir = new Vector2[HMAX];
         Vector2[] a1stdir = new Vector2[HMAX];
+        Vector2[] smpos = new Vector2[HMAX];
         float[] vel = new float[HMAX];
         float[] accel = new float[HMAX];
         float[] jerk = new float[HMAX];

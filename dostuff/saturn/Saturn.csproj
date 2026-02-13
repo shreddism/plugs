@@ -2,9 +2,13 @@
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <ItemGroup>
+    <ItemGroup>
+    <PackageReference Include="MathNet.Filtering.Kalman" Version="0.7.0" />
+    <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
     <PackageReference Include="OpenTabletDriver.Plugin" Version="0.6.3" />
   </ItemGroup>
   
