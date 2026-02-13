@@ -325,6 +325,7 @@ namespace Saturn
                     aemaOutput = pos[0];
                     ringOutput = pos[0];
                     iRingPos0 = pos[0];
+                    InsertAtFirst(smpos, pos[0]);
                     OnEmit();
                     return;
                 }
@@ -479,7 +480,7 @@ namespace Saturn
                 float dist = Vector2.Distance(aemaOutput, ringOutput);
                 float mod2 = mod1 * FSmoothstep(dist, 0, 50 * areaScale);
                 float mod3 = (1f - stockWeight) * FSmoothstep(dist, 0, 100 * areaScale) * FSmoothstep(accel[0] + Math.Min(0, -jerk[0]), -10 * areaScale, -30 * areaScale);
-                float mod4 = (1 + MathF.Log10(Math.Max(aResponse, 0.75f))) * stockWeight * MathF.Pow(FSmoothstep(dist, 2500 * aResponse * areaScale, (500 * aResponse * areaScale) - 1.0f) * FSmoothstep(accel[0] + Math.Max(0, jerk[0]), 10 * areaScale, 30 * areaScale), 2) * DotNorm(ddir[0], dir[0], 0);
+                float mod4 = (1 + MathF.Log10(Math.Max(aResponse, 0.75f))) * stockWeight * MathF.Pow(FSmoothstep(dist, 2500 * aResponse * areaScale, (500 * aResponse * areaScale) - 1.0f) * FSmoothstep(accel[0] + Math.Max(0, jerk[0]), 10 * areaScale, 30 * areaScale), 5) * DotNorm(ddir[0], dir[0], 0);
                 weight += Math.Max(mod2, mod3) - mod4;
                 weight = WireAdjust(Math.Max(0, weight), expect, updateTime, wire);
               //  Console.WriteLine(weight);

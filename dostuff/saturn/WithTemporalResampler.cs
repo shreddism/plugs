@@ -434,6 +434,7 @@ namespace Saturn
         void ResetValues(Vector2 p) {
             kf = new KalmanVector2(4, p);
             stpos = Enumerable.Repeat(p, stpos.Length).ToArray();
+            smpos = Enumerable.Repeat(p, smpos.Length).ToArray();
             latestReport = runningStopwatch.Elapsed;
             tOffset = 0;
         }
