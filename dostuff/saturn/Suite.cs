@@ -296,10 +296,7 @@ namespace Saturn
                 if (moveOk && emergency == 0 && !liftorpress) {
                     Vector2 hard = vtlimiter == 3 ? smpos[0] + (trDir - (trDir - (stdir[1] / reportMsAvg))) * Math.Max(0, alpha0 - (vtlimiter - 1)) * (reportMsAvg / expect) : pos[0];
                     ldOutput = Vector2.Lerp(ldOutput, hard, WireAdjust(dumbWeight, expect, updateTime, wire));
-                    ringOutput = Vector2.Lerp(ringOutput, hard, WireAdjust(dumbWeight, expect, updateTime, wire));
                     ldOutput = Vector2.Lerp(ldOutput, smpos[0], dumbWeight * FSmoothstep(accel[0], -10 * areaScale, -200 * areaScale));
-                    ringOutput = Vector2.Lerp(ringOutput, smpos[0], dumbWeight * FSmoothstep(accel[0], -10 * areaScale, -200 * areaScale));
-
                 }
               
                 AEMA();
@@ -371,8 +368,8 @@ namespace Saturn
             pps4 = FSmoothstep(stdir[3].Length() - stdir[0].Length(), -15, 0) - FSmoothstep(stdir[3].Length() - stdir[0].Length(), 0, 15);
         //    Console.WriteLine(pathpreservationsociety);
 
-           // if (pressure[0] == 0)
-           //     pathpreservationsociety = Math.Min(pathpreservationsociety, 3 - FSmoothstep(Vector2.Distance(ddir[0], ddir[1]), 30, 69));   
+            if (pressure[0] == 0)
+                pathpreservationsociety = Math.Min(pathpreservationsociety, 3 - FSmoothstep(Vector2.Distance(ddir[0], ddir[1]), 30, 69));   
         }
 
         void ConditionalUpdate() {
