@@ -87,7 +87,7 @@ namespace Saturn
         [Property("Accel Response Aggressiveness"), DefaultPropertyValue(1.5f), ToolTip
         (
             "Useful values range between 0 and 2.\n" +
-            "Do not put above 0 if you hover, as reporting becomes buggy.\n" +
+            "Do not put above 0 if you hover or are putting this after an interpolator, as reporting becomes buggy.\n" +
             "Makes aim 'snappier' on sharp accel."
         )]
         public float aResponse { 
@@ -152,7 +152,7 @@ namespace Saturn
                     emergency--;
                 }
                 else {
-                    emergency = 5;
+                    emergency = 3;
                 }
             //    Console.WriteLine(reportTime);
                 moveOk = false;
@@ -171,6 +171,8 @@ namespace Saturn
                 RF();
 
                 if (moveOk && emergency == 0 && !liftorpress) {
+                ldOutput = Vector2.Lerp(ldOutput, pos[0], dumbWeight);
+                ldOutput = Vector2.Lerp(ldOutput, pos[0], dumbWeight * FSmoothstep(accel[0], -10 * areaScale, -200 * areaScale));
                 ringOutput = Vector2.Lerp(ringOutput, pos[0], dumbWeight);
                 ringOutput = Vector2.Lerp(ringOutput, pos[0], dumbWeight * FSmoothstep(accel[0], -10 * areaScale, -200 * areaScale));
                 }
@@ -179,9 +181,11 @@ namespace Saturn
 
                 report.Position = aemaOutput;
 
-                if (!vec2IsFinite(report.Position + ringOutput + iRingPos0 + ldOutput) | liftorpress) {
-                    emergency = 5;
+                if (!vec2IsFinite(report.Position + ringOutput + iRingPos0 + ldOutput)) {
+                    emergency = 3;
                 }
+
+                Console.WriteLine(Vector2.Distance(report.Position, pos[0]));
 
                 if (emergency > 0) {
                     report.Position = pos[0];
@@ -299,7 +303,7 @@ namespace Saturn
              liftorpress = false;
 
             if (dir[0] == pos[0]) {
-                emergency = 5;
+                emergency = 3;
             }
 
       //      pathpreservationsociety = Math.Min(Math.Min(stdir[0].Length(), stdir[1].Length()), stdir[2].Length());

@@ -186,30 +186,50 @@ namespace Saturn
         }
         public float _areaScale;
 
+        [Property("Hover Band-Aid"), DefaultPropertyValue(true), ToolTip
+        (
+            "Wacom PTK-x70 - keep enabled."
+        )]
+        public bool hoverbandaid { set; get; }
+
         public event Action<IDeviceReport> Emit;
 
         protected override void ConsumeState()
         {
             if (State is ITabletReport report)
             {   
+                if (!init) {
+                ResetValues(report.Position);
+                init = true;
+                return;
+                }
+
                 reportTime = (float)reportStopwatch.Restart().TotalMilliseconds;
                 consumeDelta = reportTime / 1000f;
                 if (reportTime < 25f && reportTime > 0.01f) {
                     if (msOverride == 0) {
                     reportMsAvg += ((reportTime - reportMsAvg) * 0.1f);
+                    rpsAvg += (1f / (consumeDelta) - rpsAvg) * (1f - MathF.Exp(-2f * (consumeDelta)));
+                    secAvg = 1f / rpsAvg;
+                    msAvg = 1000f * secAvg;
                     }
                     else {
-                    reportMsAvg = msOverride;
+                    reportMsAvg = msAvg = msOverride;
+                    secAvg = reportMsAvg / 1000f;
+                    rpsAvg = 1f / secAvg;
                     }
                     if (emergency > 0)
                     emergency--;
 
-                    rpsAvg += (1f / (consumeDelta) - rpsAvg) * (1f - MathF.Exp(-2f * (consumeDelta)));
-                    secAvg = 1f / rpsAvg;
-                    msAvg = 1000f * secAvg;
+                    Console.WriteLine(reportMsAvg);
+                    Console.WriteLine(msAvg);
+                    Console.WriteLine(secAvg);
+                    Console.WriteLine(rpsAvg);
+
+                    
                 }
                 else {
-                    emergency = 5;
+                    emergency = 3;
                     ResetValues(report.Position);
                 }
             
@@ -240,6 +260,17 @@ namespace Saturn
                 
                 updateTime = (float)updateStopwatch.Restart().TotalMilliseconds;
 
+                if (emergency > 0) {
+                    report.Position = pos[0];
+                    ldOutput = pos[0];
+                    aemaOutput = pos[0];
+                    ringOutput = pos[0];
+                    iRingPos0 = pos[0];
+                    ResetValuesWithoutKf(pos[0]);
+                    OnEmit();
+                    return;
+                }
+
                 float t = 1 + (float)(runningStopwatch.Elapsed - latestReport).TotalSeconds * rpsAvg;
                 t = Math.Clamp(t, 0, 3);
     
@@ -247,11 +278,12 @@ namespace Saturn
 
                 RF();
 
-                if (moveOk && emergency == 0 && !liftorpress) {
+                if (moveOk) {
                    Vector2 hard = frameShift == 1 ? smpos[0] + (prpos[0] - smpos[0]) : smpos[0];
+                    ldOutput = Vector2.Lerp(ldOutput, hard, WireAdjust(dumbWeight, expect, updateTime, wire));
+                    ldOutput = Vector2.Lerp(ldOutput, smpos[0], dumbWeight * FSmoothstep(accel[0], -10 * areaScale, -200 * areaScale));
                     ringOutput = Vector2.Lerp(ringOutput, hard, WireAdjust(dumbWeight, expect, updateTime, wire));
-                 //   Console.WriteLine(prpos[0]);
-                   ringOutput = Vector2.Lerp(ringOutput, smpos[0], dumbWeight * FSmoothstep(accel[0], -10 * areaScale, -200 * areaScale));
+                    ringOutput = Vector2.Lerp(ringOutput, smpos[0], dumbWeight * FSmoothstep(accel[0], -10 * areaScale, -200 * areaScale));
                 }
               
                 AEMA();
@@ -260,24 +292,13 @@ namespace Saturn
                 dirOfOutput = (report.Position - lastOutputPos) / updateTime;
                 report.Pressure = pressure[0];
 
-                if (!vec2IsFinite(report.Position + ringOutput + iRingPos0 + ldOutput) | liftorpress) {
+                if (!vec2IsFinite(report.Position + ringOutput + iRingPos0 + ldOutput)) {
                     report.Position = pos[0];
                     aemaOutput = pos[0];
                     ldOutput = pos[0];
                     ringOutput = pos[0];
                     iRingPos0 = pos[0];
-                    emergency = 5;
-                    ResetValues(pos[0]);
-                    OnEmit();
-                    return;
-                }
-
-                if (emergency > 0) {
-                    report.Position = pos[0];
-                    ldOutput = pos[0];
-                    aemaOutput = pos[0];
-                    ringOutput = pos[0];
-                    iRingPos0 = pos[0];
+                    emergency = 3;
                     ResetValues(pos[0]);
                     OnEmit();
                     return;
@@ -323,13 +344,11 @@ namespace Saturn
             
         //    Console.WriteLine(dir[0]);
 
-          //  if ((pressure[0] > 0 && pressure[1] == 0) || (pressure[0] == 0 && pressure[1] > 0))
-          //  liftorpress = true;
-         //   liftorpress = false;
-
-            if (dir[0] == pos[0]) {
-                emergency = 5;
+            if (((hoverbandaid) && (pressure[0] > 0 && pressure[1] == 0) || (pressure[0] == 0 && pressure[1] > 0)) || (dir[0] == pos[0])) {
+                emergency = 3;
             }
+
+            
 
 
 /*
@@ -384,6 +403,7 @@ namespace Saturn
                 ringOutput = Vector2.Lerp(ringOutput, ldOutput, FSmoothstep(accel[0], -10 * areaScale, -200 * areaScale));
                 moveOk = true;
                 }
+                else moveOk = false;
                // Console.WriteLine(ringOutput - ldOutput);
             }
             else {
@@ -433,6 +453,13 @@ namespace Saturn
 
         void ResetValues(Vector2 p) {
             kf = new KalmanVector2(4, p);
+            stpos = Enumerable.Repeat(p, stpos.Length).ToArray();
+            smpos = Enumerable.Repeat(p, smpos.Length).ToArray();
+            latestReport = runningStopwatch.Elapsed;
+            tOffset = 0;
+        }
+
+        void ResetValuesWithoutKf(Vector2 p) {
             stpos = Enumerable.Repeat(p, stpos.Length).ToArray();
             smpos = Enumerable.Repeat(p, smpos.Length).ToArray();
             latestReport = runningStopwatch.Elapsed;
@@ -592,6 +619,7 @@ namespace Saturn
         float secAvg = 0.005f;
         float consumeDelta;
         float expect => 1000 / Frequency;
+        bool init = false;
     }
 
     public class KalmanFilter

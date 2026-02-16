@@ -1,5 +1,7 @@
 using System;
 using System.Numerics;
+using System.Runtime;
+using System.Runtime.CompilerServices;
 using OpenTabletDriver.Plugin.Attributes;
 using OpenTabletDriver.Plugin.Output;
 using OpenTabletDriver.Plugin.Tablet;
@@ -201,22 +203,38 @@ namespace Saturn
         }
         public float _areaScale;
 
+        [Property("Hover Band-Aid"), DefaultPropertyValue(true), ToolTip
+        (
+            "Wacom PTK-x70 - keep enabled."
+        )]
+        public bool hoverbandaid { set; get; }
+
+        [Property("Test Toggle"), DefaultPropertyValue(true), ToolTip
+        (
+            "ok"
+        )]
+        public bool testToggle { set; get; }
+
         public event Action<IDeviceReport> Emit;
 
+    
         protected override void ConsumeState()
         {
             if (State is ITabletReport report)
             {    
+                if (!init) {
+                    Initialize();
+                    init = true;
+                }
                 reportTime = (float)reportStopwatch.Restart().TotalMilliseconds;
                 if (reportTime < 25) {
                     if (msOverride == 0)
                     reportMsAvg += ((reportTime - reportMsAvg) * 0.1f);
-                    else reportMsAvg = msOverride;
                     if (emergency > 0)
                     emergency--;
                 }
                 else {
-                    emergency = 5;
+                    emergency = 3;
                 }
 
               //  Console.WriteLine("Consume---------");
@@ -250,12 +268,24 @@ namespace Saturn
             } 
         }
 
+
         protected override void UpdateState()
         {
             if (State is ITabletReport report && PenIsInRange())
             {
                 
                 updateTime = (float)updateStopwatch.Restart().TotalMilliseconds;
+
+                if (emergency > 0) {
+                    report.Position = pos[0];
+                    ldOutput = pos[0];
+                    aemaOutput = pos[0];
+                    ringOutput = pos[0];
+                    iRingPos0 = pos[0];
+                    InsertAtFirst(smpos, pos[0]);
+                    OnEmit();
+                    return;
+                }
 
               //  Console.WriteLine(updateTime);
 
@@ -293,10 +323,12 @@ namespace Saturn
 
                 RF();
 
-                if (moveOk && emergency == 0 && !liftorpress) {
+                if (moveOk) {
                     Vector2 hard = vtlimiter == 3 ? smpos[0] + (trDir - (trDir - (stdir[1] / reportMsAvg))) * Math.Max(0, alpha0 - (vtlimiter - 1)) * (reportMsAvg / expect) : pos[0];
                     ldOutput = Vector2.Lerp(ldOutput, hard, WireAdjust(dumbWeight, expect, updateTime, wire));
                     ldOutput = Vector2.Lerp(ldOutput, smpos[0], dumbWeight * FSmoothstep(accel[0], -10 * areaScale, -200 * areaScale));
+                    ringOutput = Vector2.Lerp(ringOutput, hard, WireAdjust(dumbWeight, expect, updateTime, wire));
+                    ringOutput = Vector2.Lerp(ringOutput, smpos[0], dumbWeight * FSmoothstep(accel[0], -10 * areaScale, -200 * areaScale));
                 }
               
                 AEMA();
@@ -311,21 +343,12 @@ namespace Saturn
                     ldOutput = pos[0];
                     ringOutput = pos[0];
                     iRingPos0 = pos[0];
-                    emergency = 5;
+                    emergency = 3;
                     OnEmit();
                     return;
                 }
 
-                if (emergency > 0) {
-                    report.Position = pos[0];
-                    ldOutput = pos[0];
-                    aemaOutput = pos[0];
-                    ringOutput = pos[0];
-                    iRingPos0 = pos[0];
-                    InsertAtFirst(smpos, pos[0]);
-                    OnEmit();
-                    return;
-                }
+                
 
                 consume = false;
 
@@ -334,7 +357,9 @@ namespace Saturn
                 OnEmit();
             }
         }
+        
 
+        
         void StatUpdate(ITabletReport report) {
             InsertAtFirst(pos, report.Position);
             Vector2 smoothed = pos[0];
@@ -349,14 +374,10 @@ namespace Saturn
             InsertAtFirst(pointaccel, ddir[0].Length());
             DAC();
             
-        //    Console.WriteLine(dir[0]);
+          //  Console.WriteLine(Vector2.Distance(ddir[0], ddir[1]));
 
-         //   if ((pressure[0] > 0 && pressure[1] == 0) || (pressure[0] == 0 && pressure[1] > 0))
-         //   liftorpress = true;
-       //      liftorpress = false;
-
-            if (dir[0] == pos[0]) {
-                emergency = 5;
+            if (((hoverbandaid) && (pressure[0] > 0 && pressure[1] == 0) || (pressure[0] == 0 && pressure[1] > 0)) || (dir[0] == pos[0])) {
+                emergency = 3;
             }
 
             pathpreservationsociety = Math.Min(Math.Min(stdir[0].Length(), stdir[1].Length()), stdir[2].Length());
@@ -368,8 +389,8 @@ namespace Saturn
             pps4 = FSmoothstep(stdir[3].Length() - stdir[0].Length(), -15, 0) - FSmoothstep(stdir[3].Length() - stdir[0].Length(), 0, 15);
         //    Console.WriteLine(pathpreservationsociety);
 
-            if (pressure[0] == 0)
-                pathpreservationsociety = Math.Min(pathpreservationsociety, 3 - FSmoothstep(Vector2.Distance(ddir[0], ddir[1]), 30, 69));   
+            if (hoverbandaid && pressure[0] == 0)
+                pathpreservationsociety = Math.Min(pathpreservationsociety, 3 - FSmoothstep(Vector2.Distance(ddir[0], ddir[1]), 70 * areaScale, 100 * areaScale));   
         }
 
         void ConditionalUpdate() {
@@ -406,7 +427,6 @@ namespace Saturn
                 float vscale = FSmoothstep(vel[0], 5, 15 + dacOuter);
                 float scale = MathF.Pow(FSmoothstep(Math.Max(pointaccel[0], Vector2.Distance(stdir[0], dir[0])), Math.Max(0, vscale * dacInner), 0.01f + (vscale * dacOuter)), 3);
                 Vector2 stabilized = Vector2.Lerp(stdir[0], dir[0], scale);
-             //   Console.WriteLine(scale);
                 if (vel[0] >= 1 && vel[1] >= 1 && vel[0] < 100 * areaScale && stabilized.Length() > 1) {
                     float ascale = Math.Max(Math.Abs(accel[0]), Math.Abs(vel[0] - stdir[0].Length()));
                     stabilized = Vector2.Lerp(stabilized, stdir[0].Length() * Vector2.Normalize(stabilized), vscale * (1 - scale) * (FSmoothstep(ascale, 0, dacOuter)));
@@ -461,6 +481,7 @@ namespace Saturn
                 ringOutput = Vector2.Lerp(ringOutput, ldOutput, FSmoothstep(accel[0], -10 * areaScale, -200 * areaScale));
                 moveOk = true;
                 }
+                else moveOk = false;
                // Console.WriteLine(ringOutput - ldOutput);
             }
             else {
@@ -506,6 +527,12 @@ namespace Saturn
             Console.WriteLine("xx");
             Console.WriteLine("dd");
             
+        }
+
+        void Initialize() {
+            if (msOverride > 0) {
+                reportMsAvg = msOverride;
+            }
         }
 
         float DotNorm(Vector2 a, Vector2 b) => Vector2.Dot(Vector2.Normalize(a), Vector2.Normalize(b));
@@ -584,6 +611,8 @@ namespace Saturn
                 
             public float ASSRSS(float x) => SelfSmootherstep(x + 1 / Time);
 
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static Vector2 DTP(Vector2 mp, Vector2 me) {
                 float a = MathF.Atan2(me.Y, me.X);
                 float ca = -a;
@@ -603,6 +632,7 @@ namespace Saturn
                 else return rp.Y;
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static Vector2 PD(Vector2 mp, Vector2 me) {
                 float a = MathF.Atan2(me.Y, me.X);
                 float ca = -a;
@@ -757,6 +787,7 @@ namespace Saturn
         bool moveOk;
         Vector2 dirOfOutput, lastOutputPos;
         float pps3;
+        bool init;
 
         float expect => 1000 / Frequency;
     }

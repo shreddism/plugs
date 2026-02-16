@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using OpenTabletDriver.Plugin.Attributes;
 using OpenTabletDriver.Plugin.Output;
 using OpenTabletDriver.Plugin.Tablet;
@@ -35,18 +36,18 @@ namespace LineSkeleton
             else if (value is IAuxReport auxReport) {
                 if (auxReport.Raw[4] == 127) {
                     perfStopwatch.Restart();
-                    for (int t = 0; t < 1000; t++) {
+                    for (int t = 0; t < 50000; t++) {
                         Vector2 tPoint = new Vector2(aaar.Next(-1000, 1000), aaar.Next(-1000, 1000));
                         Vector2[] test = new Vector2[TEST_SIZE];
                         for (int i = 0; i < TEST_SIZE; i++) {
-                            test[i].X = MathF.Pow(i, aaar.Next(0, 3));
-                            test[i].Y = MathF.Pow(aaar.Next(0, 3), i);
+                            test[i].X = MathF.Pow(i, aaar.Next(0, 3)) * aaar.Next(-1, 1);
+                            test[i].Y = MathF.Pow(aaar.Next(0, 3), i) * aaar.Next(-1, 1);
                         }
                         Line[] testlines = new Line[TEST_SIZE];
-                        float xd = 0;
+                        Vector2 xd = Vector2.Zero;
                         for (int i = 0; i < TEST_SIZE; i++) {
                             testlines[i] = new Line(test[i], Vector2.Zero, i);
-                            xd += testlines[i].SegmentPerpendicularDistanceL(tPoint, (float)(aaar.Next(1, 9) / 20), (float)(aaar.Next(11, 19) / 20));
+                            xd += testlines[i].SegmentPerpendicularDistanceAIL(tPoint, (float)(aaar.Next(1, 9) / 20), (float)(aaar.Next(11, 19) / 20));
                         }
 
 
@@ -79,7 +80,7 @@ namespace LineSkeleton
                 }
                 else if (auxReport.Raw[4] == 1) {
                     perfStopwatch.Restart();
-                    for (int t = 0; t < 1000; t++) {
+                    for (int t = 0; t < 50000; t++) {
                         Vector2 tPoint = new Vector2(aaar.Next(-1000, 1000), aaar.Next(-1000, 1000));
                         Vector2[] test = new Vector2[TEST_SIZE];
                         for (int i = 0; i < TEST_SIZE; i++) {
@@ -87,10 +88,10 @@ namespace LineSkeleton
                             test[i].Y = MathF.Pow(aaar.Next(0, 3), i) * aaar.Next(-1, 1);
                         }
                         Line[] testlines = new Line[TEST_SIZE];
-                        float xd = 0;
+                        Vector2 xd = Vector2.Zero;
                         for (int i = 0; i < TEST_SIZE; i++) {
                             testlines[i] = new Line(test[i], Vector2.Zero, i);
-                            xd += testlines[i].SegmentPerpendicularDistance(tPoint, (float)(aaar.Next(1, 9) / 20), (float)(aaar.Next(11, 19) / 20)).Length();
+                            xd += testlines[i].SegmentPerpendicularDistance(tPoint, (float)(aaar.Next(1, 9) / 20), (float)(aaar.Next(11, 19) / 20));
                         } 
 
 
@@ -152,6 +153,13 @@ namespace LineSkeleton
                 return new Vector2((cosine * p.X) - (sine * p.Y), (sine * p.X) + (cosine * p.Y));
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public static Vector2 RotateAIL(Vector2 p, float a) {
+                float cosine = MathF.Cos(a);
+                float sine = MathF.Sin(a);
+                return new Vector2((cosine * p.X) - (sine * p.Y), (sine * p.X) + (cosine * p.Y));
+            }
+
             public void Step(float t) {
                 Vector2 ldir = ((Start - End) / Time) * t;
                 Start += ldir;
@@ -194,6 +202,17 @@ namespace LineSkeleton
                 if (rp.X < 0f) return rp.Length();
                 else if (rp.X > re.X) return (rp - re).Length();
                 else return rp.Y;
+            }
+
+             [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public static Vector2 PDAIL(Vector2 mp, Vector2 me) {
+                float a = MathF.Atan2(me.Y, me.X);
+                float ca = -a;
+                Vector2 rp = Rotate(mp, ca);
+                Vector2 re = Rotate(me, ca);
+                if (rp.X < 0f) return Rotate(new Vector2(rp.X, 0f), a);
+                else if (rp.X > re.X) return Rotate(new Vector2(rp.X - re.X, 0f), a);
+                else return Vector2.Zero;
             }
 
             public static Vector2 PD(Vector2 mp, Vector2 me) {
@@ -256,6 +275,13 @@ namespace LineSkeleton
                 Vector2 se = Vector2.Lerp(Start, End, t2);
                 return PD(p - ss, se - ss);
             } 
+
+           
+            public Vector2 SegmentPerpendicularDistanceAIL(Vector2 p, float t1, float t2) {
+                Vector2 ss = Vector2.Lerp(Start, End, t1);
+                Vector2 se = Vector2.Lerp(Start, End, t2);
+                return PDAIL(p - ss, se - ss);
+            }
 
             public Vector2 DirtyCurvePerpendicularDistance(Vector2 p, Vector2 c, float t1, float t2) {
                 Vector2 ss = Curve(c, t1 * 2);
