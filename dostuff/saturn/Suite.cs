@@ -273,7 +273,7 @@ namespace Saturn
         {
             if (State is ITabletReport report && PenIsInRange())
             {
-                
+                perfStopwatch.Restart();
                 updateTime = (float)updateStopwatch.Restart().TotalMilliseconds;
 
                 if (emergency > 0) {
@@ -353,6 +353,8 @@ namespace Saturn
                 consume = false;
 
              //   Console.WriteLine(report.Position - pos[0]);
+
+             Console.WriteLine(perfStopwatch.Restart().TotalMicroseconds);
 
                 OnEmit();
             }
@@ -447,7 +449,11 @@ namespace Saturn
                 float scale1 = MathF.Pow(DotNorm(trDir - clusterdir1, Vector2.Zero - clusterdir1, 0), 5);
                 float time1 = Line.SelfSmoothstep((linedrivetime + (vtlimiter - 3)) / namelesstime1);
                 float time2 = Line.SelfSmoothstep((linedrivetime + (vtlimiter - 2)) / namelesstime1);
-                Vector2 dist = ctozero.SegmentDistanceToPoint(trDir, time1, time2);
+                Vector2 dist;
+                if (testToggle) {
+                    dist = ctozero.SegmentDistanceToPointAIL(trDir, time1, time2);
+                }
+                else dist = ctozero.SegmentDistanceToPoint(trDir, time1, time2);
                 if (!vec2IsFinite(dist)) {
                     dist = Vector2.Zero;
                 }
@@ -611,9 +617,18 @@ namespace Saturn
                 
             public float ASSRSS(float x) => SelfSmootherstep(x + 1 / Time);
 
+            public static Vector2 DTP(Vector2 mp, Vector2 me) {
+                float a = MathF.Atan2(me.Y, me.X);
+                float ca = -a;
+                Vector2 rp = Rotate(mp, ca);
+                Vector2 re = Rotate(me, ca);
+                if (rp.X < 0f) return mp;
+                else if (rp.X > re.X) return Rotate(rp - re, a);
+                else return Rotate(new Vector2(0f, rp.Y), a);
+            }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static Vector2 DTP(Vector2 mp, Vector2 me) {
+            public static Vector2 DTPAIL(Vector2 mp, Vector2 me) {
                 float a = MathF.Atan2(me.Y, me.X);
                 float ca = -a;
                 Vector2 rp = Rotate(mp, ca);
@@ -632,8 +647,18 @@ namespace Saturn
                 else return rp.Y;
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static Vector2 PD(Vector2 mp, Vector2 me) {
+                float a = MathF.Atan2(me.Y, me.X);
+                float ca = -a;
+                Vector2 rp = Rotate(mp, ca);
+                Vector2 re = Rotate(me, ca);
+                if (rp.X < 0f) return Rotate(new Vector2(rp.X, 0f), a);
+                else if (rp.X > re.X) return Rotate(new Vector2(rp.X - re.X, 0f), a);
+                else return Vector2.Zero;
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public static Vector2 PDAIL(Vector2 mp, Vector2 me) {
                 float a = MathF.Atan2(me.Y, me.X);
                 float ca = -a;
                 Vector2 rp = Rotate(mp, ca);
@@ -660,6 +685,12 @@ namespace Saturn
                 Vector2 ss = Vector2.Lerp(Start, End, t1);
                 Vector2 se = Vector2.Lerp(Start, End, t2);
                 return DTP(p - ss, se - ss);
+            } 
+
+            public Vector2 SegmentDistanceToPointAIL(Vector2 p, float t1, float t2) {
+                Vector2 ss = Vector2.Lerp(Start, End, t1);
+                Vector2 se = Vector2.Lerp(Start, End, t2);
+                return DTPAIL(p - ss, se - ss);
             } 
 
             public Vector2 DirtyCurveDistanceToPoint(Vector2 p, Vector2 c, float t1, float t2) {
@@ -693,6 +724,12 @@ namespace Saturn
                 Vector2 se = Vector2.Lerp(Start, End, t2);
                 return PD(p - ss, se - ss);
             } 
+
+            public Vector2 SegmentPerpendicularDistanceAIL(Vector2 p, float t1, float t2) {
+                Vector2 ss = Vector2.Lerp(Start, End, t1);
+                Vector2 se = Vector2.Lerp(Start, End, t2);
+                return PDAIL(p - ss, se - ss);
+            }
 
             public Vector2 DirtyCurvePerpendicularDistance(Vector2 p, Vector2 c, float t1, float t2) {
                 Vector2 ss = Curve(c, t1 * 2);

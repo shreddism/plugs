@@ -47,7 +47,7 @@ namespace LineSkeleton
                         Vector2 xd = Vector2.Zero;
                         for (int i = 0; i < TEST_SIZE; i++) {
                             testlines[i] = new Line(test[i], Vector2.Zero, i);
-                            xd += testlines[i].SegmentPerpendicularDistanceAIL(tPoint, (float)(aaar.Next(1, 9) / 20), (float)(aaar.Next(11, 19) / 20));
+                            xd += testlines[i].SegmentPerpendicularDistance(tPoint, (float)(aaar.Next(1, 9) / 20), (float)(aaar.Next(11, 19) / 20));
                         }
 
 
@@ -91,7 +91,7 @@ namespace LineSkeleton
                         Vector2 xd = Vector2.Zero;
                         for (int i = 0; i < TEST_SIZE; i++) {
                             testlines[i] = new Line(test[i], Vector2.Zero, i);
-                            xd += testlines[i].SegmentPerpendicularDistance(tPoint, (float)(aaar.Next(1, 9) / 20), (float)(aaar.Next(11, 19) / 20));
+                            xd += testlines[i].SegmentPerpendicularDistanceAIL(tPoint, (float)(aaar.Next(1, 9) / 20), (float)(aaar.Next(11, 19) / 20));
                         } 
 
 
@@ -195,6 +195,17 @@ namespace LineSkeleton
                 else return Rotate(new Vector2(0f, rp.Y), a);
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public static Vector2 DTPAIL(Vector2 mp, Vector2 me) {
+                float a = MathF.Atan2(me.Y, me.X);
+                float ca = -a;
+                Vector2 rp = Rotate(mp, ca);
+                Vector2 re = Rotate(me, ca);
+                if (rp.X < 0f) return mp;
+                else if (rp.X > re.X) return Rotate(rp - re, a);
+                else return Rotate(new Vector2(0f, rp.Y), a);
+            }
+
             public static float DTPL(Vector2 mp, Vector2 me) {
                 float ca = -MathF.Atan2(me.Y, me.X);
                 Vector2 rp = Rotate(mp, ca);
@@ -204,7 +215,7 @@ namespace LineSkeleton
                 else return rp.Y;
             }
 
-             [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static Vector2 PDAIL(Vector2 mp, Vector2 me) {
                 float a = MathF.Atan2(me.Y, me.X);
                 float ca = -a;
