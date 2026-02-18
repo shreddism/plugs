@@ -152,7 +152,7 @@ namespace Saturn
                     emergency--;
                 }
                 else {
-                    emergency = 3;
+                    emergency = 4;
                 }
             //    Console.WriteLine(reportTime);
                 moveOk = false;
@@ -180,7 +180,7 @@ namespace Saturn
                 report.Position = aemaOutput;
 
                 if (!vec2IsFinite(report.Position + ringOutput + iRingPos0 + ldOutput)) {
-                    emergency = 3;
+                    emergency = 4;
                 }
 
              //   Console.WriteLine(Vector2.Distance(report.Position, pos[0]));
