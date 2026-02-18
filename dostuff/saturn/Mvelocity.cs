@@ -9,16 +9,16 @@ using OpenTabletDriver.Plugin.Timing;
 
 namespace Saturn
 {
-    [PluginName("Saturn - Suite")]
-    public class Suite : AsyncPositionedPipelineElement<IDeviceReport>
+    [PluginName("Saturn - Multifilter (Velocity Interpolation)")]
+    public class MultifilterVI : AsyncPositionedPipelineElement<IDeviceReport>
     {
-        public Suite() : base()
+        public MultifilterVI() : base()
         {
         }
 
         public override PipelinePosition Position => PipelinePosition.PreTransform;
 
-        [Property("Velocity Trajectory Limiter"), DefaultPropertyValue(3f), ToolTip
+        [Property("Velocity Trajectory Limiter"), DefaultPropertyValue(2f), ToolTip
         (
             "2 = zero prediction, only interpolation, 3 = only prediction under sufficient situations.\n" +
             "If on a Intuos Pro (200hz or 300hz), put this to 3.\n" +
@@ -55,7 +55,7 @@ namespace Saturn
         )]
         public bool dacToggle { set; get; }
 
-        [Property("Directional Antichatter Inner 'Radius'"), DefaultPropertyValue(1f), ToolTip
+        [Property("Directional Antichatter Inner 'Radius'"), DefaultPropertyValue(0f), ToolTip
         (
             "Similar method to Radial Follow. The unit of this is tablet raw data unit per report.\n" +
             "If on a large-small area on a Wacom Pro, try 0-1 respectively.\n" +
@@ -175,17 +175,17 @@ namespace Saturn
         }
         public float _oMult;
 
-        [Property("wire"), DefaultPropertyValue(true), ToolTip
+        [Property("wire"), DefaultPropertyValue(false), ToolTip
         (
             "You should definitely leave this enabled unless your specific situation requires otherwise.\n" +
             "Equivalent to 'extraFrames' from Temporal Resampler."
         )]
         public bool wire { set; get; }
 
-        [Property("msOverride"), DefaultPropertyValue(3.3f), ToolTip
+        [Property("msOverride"), DefaultPropertyValue(0f), ToolTip
         (
             "You should know what you are doing if you change this from 0.\n" +
-            "Wacom PTK-x70 - make this 3.3 if using given pen, otherwise you are on your own."
+            "Wacom PTK-x70 - make this 3.302466 if using given pen, otherwise you are on your own."
         )]
         public float msOverride { 
             set => _msOverride = Math.Clamp(value, 0f, 100f);
@@ -203,40 +203,35 @@ namespace Saturn
         }
         public float _areaScale;
 
-        [Property("Hover Band-Aid"), DefaultPropertyValue(true), ToolTip
+        [Property("Hover Band-Aid"), DefaultPropertyValue(false), ToolTip
         (
             "Wacom PTK-x70 - keep enabled."
         )]
         public bool hoverbandaid { set; get; }
 
-        [Property("Test Toggle"), DefaultPropertyValue(true), ToolTip
+        [Property("Test Toggle"), DefaultPropertyValue(false), ToolTip
         (
             "ok"
         )]
         public bool testToggle { set; get; }
-
-        [Property("Test Toggle"), DefaultPropertyValue(true), ToolTip
-        (
-            "ok"
-        )]
-        public bool testToggle2 { set; get; }
 
         public event Action<IDeviceReport> Emit;
 
     
         protected override void ConsumeState()
         {
+            if (!init) {
+                Initialize();
+                init = true;
+            }
             if (State is ITabletReport report)
             {    
-                if (!init) {
-                    Initialize();
-                    init = true;
-                }
+                
                 reportTime = (float)reportStopwatch.Restart().TotalMilliseconds;
                 if (reportTime < 25) {
                     if (msOverride == 0) {
                         reportMsAvg += ((reportTime - reportMsAvg) * 0.1f);
-                        dumbWeight = MathF.Pow(0.025f, ((reportMsAvg / 3.3f) * Frequency) / 1000);
+                        dumbWeight = 0.025f * expect * (3.302466f / msOverride);
                     }
                     if (emergency > 0)
                     emergency--;
@@ -331,11 +326,9 @@ namespace Saturn
                 RF();
 
                 if (moveOk) {
-                    Vector2 hard = testToggle2 ? smpos[0] + (trDir - (trDir - (stdir[1] / reportMsAvg))) * Math.Max(0, alpha0 - (vtlimiter - 1)) * (reportMsAvg / expect) : pos[0];
+                    Vector2 hard = testToggle ? smpos[0] + (trDir - (trDir - (stdir[1] / reportMsAvg))) * Math.Max(0, alpha0 - (vtlimiter - 1)) * (reportMsAvg / expect) : pos[0];
                     ldOutput = Vector2.Lerp(ldOutput, hard, WireAdjust(dumbWeight, expect, updateTime, wire));
                     ldOutput = Vector2.Lerp(ldOutput, smpos[0], dumbWeight * FSmoothstep(accel[0], -10 * areaScale, -200 * areaScale));
-                    ringOutput = Vector2.Lerp(ringOutput, hard, WireAdjust(dumbWeight, expect, updateTime, wire));
-                    ringOutput = Vector2.Lerp(ringOutput, smpos[0], dumbWeight * FSmoothstep(accel[0], -10 * areaScale, -200 * areaScale));
                 }
               
                 AEMA();
@@ -359,7 +352,7 @@ namespace Saturn
 
                 consume = false;
 
-           //     Console.WriteLine(dumbWeight);
+            //    Console.WriteLine(dumbWeight);
 
                 OnEmit();
             }
@@ -395,7 +388,7 @@ namespace Saturn
         //    Console.WriteLine(pathpreservationsociety);
 
             if (hoverbandaid && pressure[0] == 0)
-                pathpreservationsociety = Math.Min(pathpreservationsociety, 3 - FSmoothstep(Vector2.Distance(ddir[0], ddir[1]), 70 * areaScale, 100 * areaScale));   
+                pathpreservationsociety = Math.Min(pathpreservationsociety, 3 - FSmoothstep(Vector2.Distance(ddir[0], ddir[1]), 70, 100));   
         }
 
         void ConditionalUpdate() {
@@ -537,7 +530,7 @@ namespace Saturn
         void Initialize() {
             if (msOverride > 0) {
                 reportMsAvg = msOverride;
-                dumbWeight = 0.025f * expect;
+                dumbWeight = 0.025f * expect * (3.302466f / msOverride);
             }
             
         }

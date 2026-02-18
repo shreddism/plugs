@@ -7,10 +7,10 @@ using OpenTabletDriver.Plugin.Timing;
 
 namespace Saturn
 {
-    [PluginName("Saturn - unterp")]
-    public class unterp : IPositionedPipelineElement<IDeviceReport>
+    [PluginName("Saturn - Multifilter (Non-Interpolated)")]
+    public class MultifilterU : IPositionedPipelineElement<IDeviceReport>
     {
-        public unterp() : base()
+        public MultifilterU() : base()
         {
         }
 
@@ -116,7 +116,7 @@ namespace Saturn
         }
         public float _rInner;
 
-        [Property("Outer Radial Mult"), DefaultPropertyValue(2f), ToolTip
+        [Property("Outer Radial Mult"), DefaultPropertyValue(1f), ToolTip
         (
             "Useful values range from 0 to ~10.\n" +
             "A slight latency compromise to be made if hovering."
@@ -173,8 +173,6 @@ namespace Saturn
                 if (moveOk && emergency == 0 && !liftorpress) {
                 ldOutput = Vector2.Lerp(ldOutput, pos[0], dumbWeight);
                 ldOutput = Vector2.Lerp(ldOutput, pos[0], dumbWeight * FSmoothstep(accel[0], -10 * areaScale, -200 * areaScale));
-                ringOutput = Vector2.Lerp(ringOutput, pos[0], dumbWeight);
-                ringOutput = Vector2.Lerp(ringOutput, pos[0], dumbWeight * FSmoothstep(accel[0], -10 * areaScale, -200 * areaScale));
                 }
 
                 AEMA();

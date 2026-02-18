@@ -8,10 +8,10 @@ using System.Numerics;
 
 namespace Saturn
 {
-    [PluginName("Saturn - Normal Tablet Multifilter")]
-    public class suitenonpro : AsyncPositionedPipelineElement<IDeviceReport>
+    [PluginName("Saturn - Multifilter (Temporal Resampler)")]
+    public class MultifilterTR : AsyncPositionedPipelineElement<IDeviceReport>
     {
-        public suitenonpro() : base()
+        public MultifilterTR() : base()
         {
         }
 
@@ -71,7 +71,7 @@ namespace Saturn
         }
         public float _dacInner;
 
-        [Property("Directional Antichatter Outer 'Radius'"), DefaultPropertyValue(2f), ToolTip
+        [Property("Directional Antichatter Outer 'Radius'"), DefaultPropertyValue(3f), ToolTip
         (
             "Similar method to Radial Follow. The unit of this is tablet raw data unit per report.\n" +
             "If on a large-small area on a Wacom Pro, try 1-3 respectively.\n" +
@@ -127,7 +127,7 @@ namespace Saturn
         }
         public float _aResponse;
 
-        const float dumbWeight = 0.025f;
+        float dumbWeight = 0.025f;
 
         [Property("Ring Antichatter Toggle"), DefaultPropertyValue(true), ToolTip
         (
@@ -147,7 +147,7 @@ namespace Saturn
         }
         public float _rInner;
 
-        [Property("Outer Radial Mult"), DefaultPropertyValue(2f), ToolTip
+        [Property("Outer Radial Mult"), DefaultPropertyValue(1f), ToolTip
         (
             "Useful values range from 0 to ~10.\n" +
             "Shouldn't be very high."
@@ -158,7 +158,7 @@ namespace Saturn
         }
         public float _oMult;
 
-        [Property("wire"), DefaultPropertyValue(true), ToolTip
+        [Property("wire"), DefaultPropertyValue(false), ToolTip
         (
             "You should definitely leave this enabled unless your specific situation requires otherwise.\n" +
             "If the filter is breaking, disabling this may solve it.\n" +
@@ -166,9 +166,10 @@ namespace Saturn
         )]
         public bool wire { set; get; }
 
-        [Property("msOverride"), DefaultPropertyValue(7.5f), ToolTip
+       [Property("msOverride"), DefaultPropertyValue(0f), ToolTip
         (
-            "You should know what you are doing if you change this from 0, or your given default (don't)."
+            "You should know what you are doing if you change this from 0.\n" +
+            "Wacom PTK-x70 - make this 3.302466 if using given pen, otherwise you are on your own."
         )]
         public float msOverride { 
             set => _msOverride = Math.Clamp(value, 0f, 100f);
@@ -186,11 +187,17 @@ namespace Saturn
         }
         public float _areaScale;
 
-        [Property("Hover Band-Aid"), DefaultPropertyValue(true), ToolTip
+        [Property("Hover Band-Aid"), DefaultPropertyValue(false), ToolTip
         (
             "Wacom PTK-x70 - keep enabled."
         )]
         public bool hoverbandaid { set; get; }
+
+        [Property("Test Toggle"), DefaultPropertyValue(false), ToolTip
+        (
+            "ok"
+        )]
+        public bool testToggle { set; get; }
 
         public event Action<IDeviceReport> Emit;
 
@@ -199,9 +206,10 @@ namespace Saturn
             if (State is ITabletReport report)
             {   
                 if (!init) {
-                ResetValues(report.Position);
-                init = true;
-                return;
+                    ResetValues(report.Position);
+                    Initialize();
+                    init = true;
+                    return;
                 }
 
                 reportTime = (float)reportStopwatch.Restart().TotalMilliseconds;
@@ -212,19 +220,13 @@ namespace Saturn
                     rpsAvg += (1f / (consumeDelta) - rpsAvg) * (1f - MathF.Exp(-2f * (consumeDelta)));
                     secAvg = 1f / rpsAvg;
                     msAvg = 1000f * secAvg;
+                    dumbWeight = 0.025f * expect * (3.302466f / reportMsAvg);
                     }
-                    else {
-                    reportMsAvg = msAvg = msOverride;
-                    secAvg = reportMsAvg / 1000f;
-                    rpsAvg = 1f / secAvg;
-                    }
+
                     if (emergency > 0)
                     emergency--;
 
-                    Console.WriteLine(reportMsAvg);
-                    Console.WriteLine(msAvg);
-                    Console.WriteLine(secAvg);
-                    Console.WriteLine(rpsAvg);
+                  
 
                     
                 }
@@ -279,11 +281,9 @@ namespace Saturn
                 RF();
 
                 if (moveOk) {
-                   Vector2 hard = frameShift == 1 ? smpos[0] + (prpos[0] - smpos[0]) : smpos[0];
+                   Vector2 hard = testToggle ? smpos[0] + (prpos[0] - smpos[0]) : smpos[0];
                     ldOutput = Vector2.Lerp(ldOutput, hard, WireAdjust(dumbWeight, expect, updateTime, wire));
                     ldOutput = Vector2.Lerp(ldOutput, smpos[0], dumbWeight * FSmoothstep(accel[0], -10 * areaScale, -200 * areaScale));
-                    ringOutput = Vector2.Lerp(ringOutput, hard, WireAdjust(dumbWeight, expect, updateTime, wire));
-                    ringOutput = Vector2.Lerp(ringOutput, smpos[0], dumbWeight * FSmoothstep(accel[0], -10 * areaScale, -200 * areaScale));
                 }
               
                 AEMA();
@@ -464,6 +464,17 @@ namespace Saturn
             smpos = Enumerable.Repeat(p, smpos.Length).ToArray();
             latestReport = runningStopwatch.Elapsed;
             tOffset = 0;
+        }
+
+        void Initialize() {
+            if (msOverride > 0) {
+                reportMsAvg = msOverride;
+                dumbWeight = 0.025f * expect * (3.302466f / msOverride);
+                reportMsAvg = msAvg = msOverride;
+                secAvg = reportMsAvg / 1000f;
+                rpsAvg = 1f / secAvg;
+            }
+            
         }
 
         float DotNorm(Vector2 a, Vector2 b) => Vector2.Dot(Vector2.Normalize(a), Vector2.Normalize(b));
