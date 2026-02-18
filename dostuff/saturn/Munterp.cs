@@ -183,7 +183,7 @@ namespace Saturn
                     emergency = 3;
                 }
 
-                Console.WriteLine(Vector2.Distance(report.Position, pos[0]));
+             //   Console.WriteLine(Vector2.Distance(report.Position, pos[0]));
 
                 if (emergency > 0) {
                     report.Position = pos[0];
