@@ -281,15 +281,16 @@ namespace Saturn
                 RF();
 
                 if (moveOk) {
-                   Vector2 hard = testToggle ? smpos[0] + (prpos[0] - smpos[0]) : smpos[0];
-                    ldOutput = Vector2.Lerp(ldOutput, hard, WireAdjust(dumbWeight, expect, updateTime, wire));
-                    ldOutput = Vector2.Lerp(ldOutput, smpos[0], dumbWeight * FSmoothstep(accel[0], -10 * areaScale, -200 * areaScale));
+              Vector2 hard = testToggle ? smpos[0] + (prpos[0] - smpos[0]) : smpos[0];
+                   ldOutput = Vector2.Lerp(ldOutput, hard, WireAdjust(dumbWeight, expect, updateTime, wire));
+                   ldOutput = Vector2.Lerp(ldOutput, smpos[0], dumbWeight * FSmoothstep(accel[0], -10 * areaScale, -200 * areaScale));
                 }
               
                 AEMA();
 
                 report.Position = aemaOutput;
                 dirOfOutput = (report.Position - lastOutputPos) / updateTime;
+                lastOutputPos = report.Position;
                 report.Pressure = pressure[0];
 
                 if (!vec2IsFinite(report.Position + ringOutput + iRingPos0 + ldOutput)) {
@@ -303,6 +304,7 @@ namespace Saturn
                     OnEmit();
                     return;
                 }
+                Plot();
 
                 consume = false;
 
@@ -326,9 +328,9 @@ namespace Saturn
             InsertAtFirst(pointaccel, ddir[0].Length());
             DAC();
 
+          //  Console.WriteLine(Vector2.Distance(pos[0], stpos[0]));
             
-            
-            Vector2 predict = smpos[0];
+            Vector2 predict = stpos[0];
             if (frameShift > 0f) {
                 predict = kf.Update(stpos[0], secAvg);
                 predict += (stpos[0] - predict) * (1f - frameShift);
@@ -370,12 +372,12 @@ namespace Saturn
         void DAC() {
             if (dacToggle) {
                 float vscale = FSmoothstep(vel[0], 5, 15 + dacOuter);
-                float scale = MathF.Pow(FSmoothstep(Math.Max(pointaccel[0], Vector2.Distance(stdir[0], dir[0])), Math.Max(0, vscale * dacInner), 0.01f + (vscale * dacOuter)), 3);
+                float scale = MathF.Pow(FSmoothstep(Math.Max(pointaccel[0], Vector2.Distance(stdir[0], dir[0])), Math.Max(0, vscale * dacInner), 0.01f + (vscale * adjDacOuter)), 3);
                 Vector2 stabilized = Vector2.Lerp(stdir[0], dir[0], scale);
              //   Console.WriteLine(scale);
                 if (vel[0] >= 1 && vel[1] >= 1 && vel[0] < 100 * areaScale && stabilized.Length() > 1) {
                     float ascale = Math.Max(Math.Abs(accel[0]), Math.Abs(vel[0] - stdir[0].Length()));
-                    stabilized = Vector2.Lerp(stabilized, stdir[0].Length() * Vector2.Normalize(stabilized), vscale * (1 - scale) * (FSmoothstep(ascale, 0, dacOuter)));
+                    stabilized = Vector2.Lerp(stabilized, stdir[0].Length() * Vector2.Normalize(stabilized), vscale * (1 - scale) * (FSmoothstep(ascale, 0, adjDacOuter)));
                 }
             InsertAtFirst(stdir, stabilized);
             Vector2 stpoint = stpos[0] + stdir[0];
@@ -474,8 +476,10 @@ namespace Saturn
                 secAvg = reportMsAvg / 1000f;
                 rpsAvg = 1f / secAvg;
             }
-            
+            adjDacOuter = Math.Max(dacOuter, dacInner + 0.01f);
         }
+
+        float adjDacOuter;
 
         float DotNorm(Vector2 a, Vector2 b) => Vector2.Dot(Vector2.Normalize(a), Vector2.Normalize(b));
 

@@ -326,15 +326,16 @@ namespace Saturn
                 RF();
 
                 if (moveOk) {
-                    Vector2 hard = testToggle ? smpos[0] + (trDir - (trDir - (stdir[1] / reportMsAvg))) * Math.Max(0, alpha0 - (vtlimiter - 1)) * (reportMsAvg / expect) : pos[0];
-                    ldOutput = Vector2.Lerp(ldOutput, hard, WireAdjust(dumbWeight, expect, updateTime, wire));
-                    ldOutput = Vector2.Lerp(ldOutput, smpos[0], dumbWeight * FSmoothstep(accel[0], -10 * areaScale, -200 * areaScale));
+                  Vector2 hard = testToggle ? smpos[0] + (trDir - (trDir - (stdir[1] / reportMsAvg))) * Math.Max(0, alpha0 - (vtlimiter - 1)) * (reportMsAvg / expect) : pos[0];
+                 ldOutput = Vector2.Lerp(ldOutput, hard, WireAdjust(dumbWeight, expect, updateTime, wire));
+               ldOutput = Vector2.Lerp(ldOutput, smpos[0], dumbWeight * FSmoothstep(accel[0], -10 * areaScale, -200 * areaScale));
                 }
               
                 AEMA();
 
                 report.Position = aemaOutput;
                 dirOfOutput = (report.Position - lastOutputPos) / updateTime;
+                lastOutputPos = report.Position;
                 report.Pressure = pressure[0];
 
                 if (!vec2IsFinite(report.Position + ringOutput + iRingPos0 + ldOutput) | liftorpress) {
@@ -349,7 +350,7 @@ namespace Saturn
                 }
 
                 
-
+                Plot();
                 consume = false;
 
             //    Console.WriteLine(dumbWeight);
@@ -382,7 +383,7 @@ namespace Saturn
             pathpreservationsociety = FSmoothstep(pathpreservationsociety, 0, 20);
             pps2Dir = (stdir[0] + stdir[1]) - (stdir[2] + stdir[2]);
             pps2 = FSmoothstep(pps2Dir.Length(), 0, 15);
-            pps3 = FSmoothstep(Vector2.Distance(stdir[0], stdir[1]), dacInner, dacOuter);
+            pps3 = FSmoothstep(Vector2.Distance(stdir[0], stdir[1]), dacInner, adjDacOuter);
             pathpreservationsociety = 2 + (vtlimiter - 2) * Math.Min(Math.Min(pathpreservationsociety, pps2), pps3);
             pps4 = FSmoothstep(stdir[3].Length() - stdir[0].Length(), -15, 0) - FSmoothstep(stdir[3].Length() - stdir[0].Length(), 0, 15);
         //    Console.WriteLine(pathpreservationsociety);
@@ -532,8 +533,10 @@ namespace Saturn
                 reportMsAvg = msOverride;
                 dumbWeight = 0.025f * expect * (3.302466f / msOverride);
             }
-            
+            adjDacOuter = Math.Max(dacOuter, dacInner + 0.01f);
         }
+
+        float adjDacOuter;
 
         float DotNorm(Vector2 a, Vector2 b) => Vector2.Dot(Vector2.Normalize(a), Vector2.Normalize(b));
 

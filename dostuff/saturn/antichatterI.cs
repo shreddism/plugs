@@ -8,9 +8,9 @@ using OpenTabletDriver.Plugin.Timing;
 namespace Saturn
 {
     [PluginName("Saturn - Anti-Gap Hawku Smoothing/Devocub Antichatter")]
-    public class AntiGap : AsyncPositionedPipelineElement<IDeviceReport>
+    public class antichatterI : AsyncPositionedPipelineElement<IDeviceReport>
     {
-        public AntiGap() : base()
+        public antichatterI() : base()
         {
         }
 
