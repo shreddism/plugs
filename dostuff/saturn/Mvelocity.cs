@@ -272,7 +272,7 @@ namespace Saturn
                     if (msOverride == 0) {
                         reportMsAvg += ((reportTime - reportMsAvg) * 0.1f);
                         expectC = reportMsAvg / expect;
-                        correctWeight = 0.025f * expect * (3.302466f / reportMsAvg);
+                        correctWeight = startCorrectWeight * expect * (msStandard / reportMsAvg);
                     }
                     if (emergency > 0)
                     emergency--;
@@ -294,7 +294,7 @@ namespace Saturn
                     bottom = 0;
                 }
 
-               /* Console.WriteLine("pathdiff (X = over/undershoot): " + pathdiffs[0]);
+                Console.WriteLine("pathdiff (X = over/undershoot): " + pathdiffs[0]);
 
                 Console.WriteLine("report milliseconds: " + reportTime);
 
@@ -304,7 +304,7 @@ namespace Saturn
 
                 Console.WriteLine("raw jerk: " + jerk[0]);
 
-                Console.WriteLine("cch: " + cmod1); */
+                Console.WriteLine("cch: " + cmod1); 
 
                 if (wire) {
                     
@@ -372,11 +372,12 @@ namespace Saturn
                     Vector2 hDir = cDir * cmod1;
                     Vector2 hard = testToggle ? smpos[0] + hDir: smpos[0];
                     float cWeight = WireAdjust(adjdWeight, expect, updateTime, wire) / (1 + dscale);
-                    float dWeight = tv2 * cWeight * dscale;
+                    float dWeight = tv2 * cWeight * (dscale + dscalebonus);
                     ldOutput = Vector2.Lerp(ldOutput, hard, cWeight * cmod1);
                     ldOutput = Vector2.Lerp(ldOutput, smpos[0], dWeight);
                     ringOutput = Vector2.Lerp(ringOutput, hard, cWeight * cmod1);
                     ringOutput = Vector2.Lerp(ringOutput, smpos[0], dWeight);
+                    
 
                     if (testToggle2) {
                         ldOutput = Vector2.Lerp(ldOutput, ldOutput - upds[0], 5 * cWeight * scscale * vascale);
@@ -436,6 +437,7 @@ namespace Saturn
             }
 
             dscale = FSmoothstep(accel[0] - Math.Max(0, jerk[0]), -10 * areaScale, -200 * areaScale);
+            dscalebonus = FSmoothstep(pathdiffs[0].X, 0, 25) * FSmoothstep(vel[0] + accel[0], 50, 0);
             scscale = FSmoothstep(Math.Abs(2 * pathdiffs[0].Y - pathdiffs[1].Y), 5, 200);
             vascale = FSmoothstep(vel[0] + accel[0], 25 * areaScale, 100 * areaScale);
 
@@ -494,6 +496,7 @@ namespace Saturn
                 }
                 InsertAtFirst(stdir, stabilized);
                 InsertAtFirst(a1stdir, (stdir[1] + stdir[0]) / 2);
+                unaccounted += (stdir[0] - dir[0]);
             }
             else {
                 InsertAtFirst(stdir, dir[0]);
@@ -568,7 +571,7 @@ namespace Saturn
             if (msOverride > 0) {
                 reportMsAvg = msOverride;
                 expectC = reportMsAvg / expect;
-                correctWeight = 0.025f * expect * (3.302466f / msOverride);
+                correctWeight = startCorrectWeight * expect * (msStandard / msOverride);
                 if (!dacToggle) {
                     adjdWeight = correctWeight;
                 }
@@ -833,7 +836,9 @@ namespace Saturn
         float[] jerk = new float[HMAX];
         float[] pointaccel = new float[HMAX];
         uint[] pressure = new uint[HMAX];
-        
+
+        float dscalebonus;
+        Vector2 unaccounted = Vector2.Zero;
         float expectC;
         float dscale, vascale, scscale;
         float peakMag, planeMag;
@@ -878,7 +883,9 @@ namespace Saturn
         bool init = false;
         float adjdWeight;
         bool eflag;
-        float correctWeight = 0.025f;
+        const float startCorrectWeight = 0.01f;
+        const float msStandard = 3.302466f;
+        float correctWeight;
         float adjDacOuter;
         float cmod1 = 1;
 
