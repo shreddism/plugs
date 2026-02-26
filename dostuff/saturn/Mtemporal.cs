@@ -84,7 +84,7 @@ namespace Saturn
         }
         public float _dacOuter;
 
-        [Property("Velocity Outer 'Range'"), DefaultPropertyValue(3f), ToolTip
+        [Property("Velocity Outer 'Range'"), DefaultPropertyValue(2f), ToolTip
         (
             "Will act the same, but for magnitude of direction.\n" +
             "No functionality changes, this was just internally set to the above option in early builds." 
@@ -169,7 +169,7 @@ namespace Saturn
         }
         public float _oMult;
 
-        [Property("wire"), DefaultPropertyValue(false), ToolTip
+        [Property("wire"), DefaultPropertyValue(true), ToolTip
         (
             "You should definitely leave this enabled unless your specific situation requires otherwise.\n" +
             "If the filter is breaking, disabling this may solve it.\n" +
@@ -204,7 +204,7 @@ namespace Saturn
         )]
         public bool hoverbandaid { set; get; }
 
-        [Property("Test Toggle"), DefaultPropertyValue(false), ToolTip
+        [Property("High Confidence Toggle"), DefaultPropertyValue(false), ToolTip
         (
             "ok"
         )]
@@ -220,6 +220,8 @@ namespace Saturn
                     ResetValues(report.Position);
                     Initialize();
                     init = true;
+                    emergency = 6;
+                    eflag = false;
                     return;
                 }
 
@@ -231,7 +233,7 @@ namespace Saturn
                     rpsAvg += (1f / (consumeDelta) - rpsAvg) * (1f - MathF.Exp(-2f * (consumeDelta)));
                     secAvg = 1f / rpsAvg;
                     msAvg = 1000f * secAvg;
-                    correctWeight = 0.025f * expect * (3.302466f / reportMsAvg);
+                    correctWeight = startCorrectWeight * expect * (msStandard / reportMsAvg);
                     }
 
                     if (emergency > 0)
@@ -242,7 +244,8 @@ namespace Saturn
                     
                 }
                 else {
-                    emergency = 3;
+                    emergency = 5;
+                    eflag = false;
                     ResetValues(report.Position);
                 }
             
@@ -253,13 +256,13 @@ namespace Saturn
                       
                 StatUpdate(report);
 
-                Console.WriteLine("pathdiff (X = over/undershoot): " + PathDiff(pos[1], pos[0], lastOutputPos));
+        /*                Console.WriteLine("pathdiff (X = over/undershoot): " + PathDiff(pos[1], pos[0], lastOutputPos));
 
                Console.WriteLine("report milliseconds: " + reportTime);
 
                Console.WriteLine("raw velocity: " + vel[0]);
 
-               Console.WriteLine("------");
+               Console.WriteLine("------"); */
                
 
                 if (wire) {
@@ -288,6 +291,13 @@ namespace Saturn
                     ringOutput = pos[0];
                     iRingPos0 = pos[0];
                     ResetValuesWithoutKf(pos[0]);
+                    InsertAtFirst(smpos, pos[0]);
+                    if (emergency > 1 && eflag) {
+                        float cTime = ((float)reportStopwatch.Elapsed.TotalSeconds * Frequency / reportMsAvg) * (expect);
+                        float scale = Math.Min((((float)(5 - emergency) + Math.Min(cTime, 1.0f)) * 0.2f), 1.0f);
+                        report.Position = Vector2.Lerp(lastOutputPos, pos[0], scale);
+                    }
+                    else lastOutputPos = pos[0];
                     OnEmit();
                     return;
                 }
@@ -329,7 +339,7 @@ namespace Saturn
                     OnEmit();
                     return;
                 }
-                //Plot();
+                Plot();
 
                 consume = false;
 
@@ -376,7 +386,8 @@ namespace Saturn
         //    Console.WriteLine(dir[0]);
 
             if (((hoverbandaid) && (pressure[0] > 0 && pressure[1] == 0) || (pressure[0] == 0 && pressure[1] > 0)) || (dir[0] == pos[0])) {
-                emergency = 3;
+                if (emergency == 0) eflag = true;
+                emergency = 5;
             }
 
             
@@ -453,7 +464,7 @@ namespace Saturn
                 float mod3 = (1f - stockWeight) * FSmoothstep(dist, 0, 100 * areaScale) * FSmoothstep(accel[0] + Math.Min(0, -jerk[0]), -10 * areaScale, -30 * areaScale);
                 float mod4 = (1 + MathF.Log10(Math.Max(aResponse, 0.75f))) * stockWeight * MathF.Pow(FSmoothstep(dist, 2500 * aResponse * areaScale, (500 * aResponse * areaScale) - 1.0f) * FSmoothstep(accel[0] + Math.Max(0, jerk[0]), 10 * areaScale, 30 * areaScale), 2) * DotNorm(ddir[0], dir[0], 0);
                 weight += Math.Max(mod2, mod3) - mod4;
-                weight = WireAdjust(Math.Max(0, weight), expect, updateTime, wire);
+                weight = Math.Clamp(weight, 0, 1);
               //  Console.WriteLine(weight);
             }
             aemaOutput = Vector2.Lerp(aemaOutput, ringOutput, weight);
@@ -501,7 +512,7 @@ namespace Saturn
         void Initialize() {
             if (msOverride > 0) {
                 reportMsAvg = msOverride;
-                correctWeight = 0.025f * expect * (3.302466f / msOverride);
+                correctWeight = startCorrectWeight * expect * (msStandard / msOverride);
                 reportMsAvg = msAvg = msOverride;
                 secAvg = reportMsAvg / 1000f;
                 rpsAvg = 1f / secAvg;
@@ -671,6 +682,9 @@ namespace Saturn
         bool moveOk;
         Vector2 dirOfOutput, lastOutputPos;
         float pps3;
+        bool eflag;
+        const float startCorrectWeight = 0.01f;
+        const float msStandard = 3.302466f;
 
         HPETDeltaStopwatch runningStopwatch = new HPETDeltaStopwatch(true);
 

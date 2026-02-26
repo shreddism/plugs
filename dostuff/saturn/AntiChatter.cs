@@ -7,7 +7,7 @@ using OpenTabletDriver.Plugin.Timing;
 
 namespace UnterpTabletDriverFilters.Devocub
 {
-    [PluginName("Unterp Devocub Antichatter")]
+    [PluginName("Saturn - Unterp Devocub Antichatter + Extra Options")]
     public class Antichatter : MillimeterPositionedPipelineElement
     {
         private const string LATENCY_TOOLTIP =
@@ -102,6 +102,16 @@ namespace UnterpTabletDriverFilters.Devocub
         }
         public float _scaleOverride;
 
+        [Property("Weight Power"), DefaultPropertyValue(1.0f), ToolTip
+        (
+            "Weight is raised to this power."
+        )]
+        public float weightPower {
+            set => _weightPower = Math.Clamp(value, 0.1f, 1000000.0f);
+            get => _weightPower;
+        }
+        public float _weightPower;
+
         [Property("Async Expected Consume Time"), DefaultPropertyValue(1.0f), ToolTip
         (
             "You should know what you are doing if you change this."
@@ -194,9 +204,9 @@ namespace UnterpTabletDriverFilters.Devocub
                 weightModifier = 1;
                 timeMult = 1;
             }
-            this.position += delta * weightModifier * timeMult;
+            this.position += delta * MathF.Pow(weightModifier, weightPower);
 
-            Console.WriteLine(delta * weightModifier * timeMult);
+            Console.WriteLine(MathF.Pow(weightModifier, weightPower));
 
             return this.position;
         }

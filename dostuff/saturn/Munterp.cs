@@ -366,6 +366,7 @@ namespace Saturn
                 float mod3 = (1f - stockWeight) * FSmoothstep(dist, 0, 100 * areaScale) * FSmoothstep(accel[0] + Math.Min(0, -jerk[0]), -10 * areaScale, -30 * areaScale);
                 float mod4 = (1 + MathF.Log10(Math.Max(aResponse, 0.75f))) * stockWeight * MathF.Pow(FSmoothstep(dist, 2500 * aResponse * areaScale, (500 * aResponse * areaScale) - 1.0f) * FSmoothstep(accel[0] + Math.Max(0, jerk[0]), 10 * areaScale, 30 * areaScale), 2) * DotNorm(ddir[0], dir[0], 0);
                 weight += Math.Max(mod2, mod3) - mod4;
+                weight = Math.Clamp(weight, 0, 1);
               //  Console.WriteLine(weight);
             }
             aemaOutput = Vector2.Lerp(aemaOutput, ringOutput, weight);

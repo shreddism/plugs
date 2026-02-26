@@ -81,7 +81,7 @@ namespace Saturn
         }
         public float _dacOuter;
 
-        [Property("Velocity Outer 'Range'"), DefaultPropertyValue(3f), ToolTip
+        [Property("Velocity Outer 'Range'"), DefaultPropertyValue(2f), ToolTip
         (
             "Will act the same, but for magnitude of direction.\n" +
             "No functionality changes, this was just internally set to the above option in early builds." 
@@ -143,7 +143,7 @@ namespace Saturn
         }
         public float _stockWeight;
 
-        [Property("Accel Response Aggressiveness"), DefaultPropertyValue(1.5f), ToolTip
+        [Property("Accel Response Aggressiveness"), DefaultPropertyValue(1f), ToolTip
         (
             "Useful values range between 0 and 2.\n" +
             "Do not put above 0 if you hover, as reporting becomes buggy.\n" +
@@ -184,7 +184,7 @@ namespace Saturn
         }
         public float _oMult;
 
-        [Property("wire"), DefaultPropertyValue(false), ToolTip
+        [Property("wire"), DefaultPropertyValue(true), ToolTip
         (
             "You should definitely leave this enabled unless your specific situation requires otherwise.\n" +
             "Some people have reported this breaking things. Their timers don't work for reasons beyond me.\n" +
@@ -192,7 +192,7 @@ namespace Saturn
         )]
         public bool wire { set; get; }
 
-        [Property("msOverride"), DefaultPropertyValue(0f), ToolTip
+        [Property("msOverride"), DefaultPropertyValue(3.302466f), ToolTip
         (
             "You should know what you are doing if you change this from 0.\n" +
             "Wacom PTK-x70 - make this 3.302466 if using given pen, otherwise you are on your own."
@@ -224,13 +224,6 @@ namespace Saturn
             "Wacom PTK-x70 - keep enabled."
         )]
         public bool testToggle { set; get; }
-
-        [Property("Test Toggle 2"), DefaultPropertyValue(false), ToolTip
-        (
-            "Tiny correction of directional (non-length) error. Extremely small effect as is.\n" +
-            "Unsure - keep at false."
-        )]
-        public bool testToggle2 { set; get; }
 
         [Property("correction behavior mod 1"), DefaultPropertyValue(0.0f), ToolTip
         (
@@ -379,12 +372,6 @@ namespace Saturn
                     ldOutput = Vector2.Lerp(ldOutput, smpos[0], dWeight);
                     ringOutput = Vector2.Lerp(ringOutput, hard, cWeight * cmod1);
                     ringOutput = Vector2.Lerp(ringOutput, smpos[0], dWeight);
-                    
-
-                    if (testToggle2) {
-                        ldOutput = Vector2.Lerp(ldOutput, ldOutput - upds[0], 5 * cWeight * scscale * vascale);
-                        ringOutput = Vector2.Lerp(ringOutput, ringOutput - upds[0], 5 * cWeight * scscale * vascale);
-                    }
                 } 
               
                 AEMA();
@@ -406,7 +393,11 @@ namespace Saturn
                     OnEmit();
                     return;
                 }
+                
                 consume = false;
+                
+                Plot();
+
                 OnEmit();
             }
         }
@@ -440,7 +431,6 @@ namespace Saturn
 
             dscale = FSmoothstep(accel[0] - Math.Max(0, jerk[0]), -10 * areaScale, -200 * areaScale);
             dscalebonus = FSmoothstep(pathdiffs[0].X, 0, 25) * FSmoothstep(vel[0] + accel[0], 50, 0);
-            scscale = FSmoothstep(Math.Abs(2 * pathdiffs[0].Y - pathdiffs[1].Y), 5, 200);
             vascale = FSmoothstep(vel[0] + accel[0], 25 * areaScale, 100 * areaScale);
 
             float bonus = FSmoothstep((accel[0] + jerk[0]), 10, 200);
@@ -564,7 +554,7 @@ namespace Saturn
                 float mod3 = (1f - stockWeight) * FSmoothstep(dist, 0, 100 * areaScale) * FSmoothstep(accel[0] + Math.Min(0, -jerk[0]), -10 * areaScale, -30 * areaScale);
                 float mod4 = (1 + MathF.Log10(Math.Max(aResponse, 0.75f))) * stockWeight * MathF.Pow(FSmoothstep(dist, 2500 * aResponse * areaScale, (500 * aResponse * areaScale) - 1.0f) * FSmoothstep(accel[0] + Math.Max(0, jerk[0]), 10 * areaScale, 30 * areaScale), 5) * DotNorm(ddir[0], dir[0], 0);
                 weight += Math.Max(mod2, mod3) - mod4;
-                weight = WireAdjust(Math.Max(0, weight), expect, updateTime, wire);
+                weight = Math.Clamp(weight, 0, 1);
             }
             aemaOutput = Vector2.Lerp(aemaOutput, ringOutput, weight);
         }
