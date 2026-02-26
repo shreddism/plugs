@@ -396,7 +396,7 @@ namespace Saturn
                 
                 consume = false;
                 
-                Plot();
+               // Plot();
 
                 OnEmit();
             }
