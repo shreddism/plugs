@@ -264,6 +264,8 @@ namespace Saturn
             if (!init) {
                 Initialize();
                 init = true;
+                emergency = 6;
+                eflag = false;
             }
             if (State is ITabletReport report)
             {
@@ -294,7 +296,7 @@ namespace Saturn
                     bottom = 0;
                 }
 
-                Console.WriteLine("pathdiff (X = over/undershoot): " + pathdiffs[0]);
+               /* Console.WriteLine("pathdiff (X = over/undershoot): " + pathdiffs[0]);
 
                 Console.WriteLine("report milliseconds: " + reportTime);
 
@@ -304,7 +306,7 @@ namespace Saturn
 
                 Console.WriteLine("raw jerk: " + jerk[0]);
 
-                Console.WriteLine("cch: " + cmod1); 
+                Console.WriteLine("cch: " + cmod1);  */
 
                 if (wire) {
                     
@@ -432,8 +434,8 @@ namespace Saturn
             DAC();
 
             if (((hoverbandaid) && (pressure[0] > 0 && pressure[1] == 0) || (pressure[0] == 0 && pressure[1] > 0)) || (dir[0] == pos[0])) {
+                if (emergency == 0) eflag = true;
                 emergency = 5;
-                eflag = true;
             }
 
             dscale = FSmoothstep(accel[0] - Math.Max(0, jerk[0]), -10 * areaScale, -200 * areaScale);
@@ -450,7 +452,7 @@ namespace Saturn
             pps2 = FSmoothstep(pps2Dir.Length(), 1, 15);
             pps3 = FSmoothstep(Vector2.Distance(stdir[0], stdir[1]), dacInner, adjDacOuter);
             pathpreservationsociety = 2 + (vtlimiter - 2) * Math.Min(Math.Min(pathpreservationsociety, pps2), pps3);
-            pps4 = FSmoothstep(stdir[3].Length() - stdir[0].Length(), -15, 3) - FSmoothstep(stdir[3].Length() - stdir[0].Length(), 3, 15);
+            pps4 = FSmoothstep(stdir[3].Length() - stdir[0].Length(), -15, -3) - FSmoothstep(stdir[3].Length() - stdir[0].Length(), 3, 15);
 
             if (hoverbandaid && pressure[0] == 0) {
                 pathpreservationsociety = Math.Min(pathpreservationsociety, 3 - FSmoothstep(Vector2.Distance(ddir[0], ddir[1]), 70, 100));

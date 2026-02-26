@@ -85,18 +85,6 @@ namespace Saturn
         }
         public float _sMult;
 
-        [Property("Async Wire Stack Override"), DefaultPropertyValue(true), ToolTip
-        (
-            "Only enable this if you know what you are doing."
-        )]
-        public bool asyncwire { set; get; }
-
-        [Property("Expected Update Time Maximum"), DefaultPropertyValue(0.5f), ToolTip
-        (
-            "Applies to Async Wiring. You should know what you are doing."
-        )]
-        public float expectU { set; get; }
-
         [Property("Expected Consume Time Override"), DefaultPropertyValue(1.0f), ToolTip
         (
             "You should know what you are doing if you change this from 0."
@@ -110,7 +98,7 @@ namespace Saturn
             {  
                 if (isReady) {  
                     consumeTime = (float)consumeStopwatch.Restart().TotalMilliseconds;
-                    if (consumeTime < 25.0f && consumeTime > 0.1f) {
+                    if (consumeTime < 25.0f) {
                             consumeMsAvg += ((consumeTime - consumeMsAvg) * 0.1f);
                             if (emergency > 0)
                             emergency--;
@@ -125,10 +113,12 @@ namespace Saturn
                     dist = pos0 - outputPos;
                     consume = true;
 
+                Console.WriteLine(consumeTime);
+
+              //  Console.WriteLine("???");
+
                     if (wire)
                         UpdateState();
-
-                        
                 }
                 else {
                     SetWeight(latency);
@@ -143,7 +133,7 @@ namespace Saturn
                 updateTime = (float)updateStopwatch.Restart().TotalMilliseconds;
 
                 if (wire) {
-                    timeMult = (updateTime / timerInterval);
+                    timeMult = Math.Min(1f, updateTime / timerInterval);
                 }
                 else { 
                     timeMult = 1.0f;
@@ -152,7 +142,7 @@ namespace Saturn
                 remainingDist = pos0 - outputPos;
 
                 if (hdToggle) {
-                    var weightModifier = (float)(MathF.Pow((remainingDist.Length() / scale) + AntichatterOffsetX, AntichatterStrength * -1) * AntichatterMultiplier);
+                    var weightModifier = (float)(MathF.Pow((dist.Length() / scale) + AntichatterOffsetX, AntichatterStrength * -1) * AntichatterMultiplier);
                     if (weightModifier + AntichatterOffsetY < 0) {
                         if (!constantEvenedWeight) {
                             modWeight = 1 / Math.Max(consumeMsAvg, 1);
@@ -179,15 +169,22 @@ namespace Saturn
                 }
                 else modWeight = evenedWeight;
 
-             //   Console.WriteLine(modWeight);
+                
 
                 adjWeight = modWeight * timeMult;
                 adjspring = spring * timeMult;
+
+            
 
                 springSave = MinLength((adjWeight) * (dist + spring), remainingDist);
                 outputPos += springSave;
                 spring += springSave;
                 spring *= MathF.Pow(sMult, timeMult);
+                
+             
+              
+
+               // Console.WriteLine(dist);
                 
                 report.Position = outputPos;
                 report.Pressure = press0;
@@ -196,13 +193,7 @@ namespace Saturn
                     report.Position = pos0;
                     outputPos = pos0;
                 }
-
-                if (asyncwire && Math.Abs(updateTime - expectU) > 0.1f && updateTime > expectU) {
-                    Console.WriteLine(updateTime);
-                }
-
                 
-
                 if (consume) {
                     consume = false;
                 }
@@ -235,11 +226,7 @@ namespace Saturn
                 float stepCount = lat / timerInterval;
                 float target = 1 - threshold;
                 weight = 1f - (1f / MathF.Pow(1f / target, 1f / stepCount));
-                if (asyncwire) {
-                    evenedWeight = weight;
-                    constantEvenedWeight = true;
-                } 
-                else if (expectC > 0) {
+                if (expectC > 0) {
                     evenedWeight = (1 - MathF.Pow(1 - weight, (expectC / (1000 / Frequency)))) / (expectC / (1000 / Frequency));
                     constantEvenedWeight = true;
                 }
@@ -247,11 +234,7 @@ namespace Saturn
             }
             else {
                 weight = 1;
-                if (asyncwire) {
-                    evenedWeight = 1;
-                    constantEvenedWeight = true;
-                } 
-                else if (expectC > 0) {
+                if (expectC > 0) {
                     evenedWeight = 1 / expectC;
                     constantEvenedWeight = true;
                 }
