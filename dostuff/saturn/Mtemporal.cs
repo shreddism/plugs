@@ -138,7 +138,7 @@ namespace Saturn
         }
         public float _aResponse;
 
-        float correctWeight = 0.025f;
+        float correctWeight = 0.01f;
 
         [Property("Ring Antichatter Toggle"), DefaultPropertyValue(true), ToolTip
         (
@@ -339,7 +339,7 @@ namespace Saturn
                     OnEmit();
                     return;
                 }
-                //Plot();
+           //     Plot();
 
                 consume = false;
 

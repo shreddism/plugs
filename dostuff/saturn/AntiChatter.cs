@@ -97,10 +97,20 @@ namespace UnterpTabletDriverFilters.Devocub
             "Use this to change the scale of distance directly."
         )]
         public float scaleOverride {
-            set => _scaleOverride = Math.Clamp(value, 0.1f, 1000000.0f);
+            set => _scaleOverride = Math.Clamp(value, 0.0f, 1000000.0f);
             get => _scaleOverride;
         }
         public float _scaleOverride;
+
+        [Property("Velocity Multiplier"), DefaultPropertyValue(10.0f), ToolTip
+        (
+            "Use actual velocity (squared for behavior purposes) to improve visual smoothness (no latency added)."
+        )]
+        public float vOverride {
+            set => _vOverride = Math.Clamp(value, 0.0f, 1000000.0f);
+            get => _vOverride;
+        }
+        public float _vOverride;
 
         [Property("Weight Power"), DefaultPropertyValue(1.0f), ToolTip
         (
@@ -133,11 +143,12 @@ namespace UnterpTabletDriverFilters.Devocub
         private float timerInterval = 1;
         private float latency;
         private float weight;
-        private Vector2 position;
+        private Vector2 position, lastPos;
         private uint pressure;
         private Vector2 prevTargetPos, targetPos, calcTarget;
         float timeMult;
-        private HPETDeltaStopwatch consumeStopwatch = new HPETDeltaStopwatch();        
+        private HPETDeltaStopwatch consumeStopwatch = new HPETDeltaStopwatch();      
+        float velocity;  
 
         public override event Action<IDeviceReport> Emit;
 
@@ -152,6 +163,8 @@ namespace UnterpTabletDriverFilters.Devocub
                 }
 
                 this.targetPos = report.Position * MillimeterScale;
+                this.velocity = MathF.Pow(Vector2.Distance(this.targetPos, this.lastPos) / timeMult, 1.0f);
+                this.lastPos = this.targetPos;
                 this.pressure = report.Pressure;
 
                 calcTarget = targetPos;
@@ -170,6 +183,10 @@ namespace UnterpTabletDriverFilters.Devocub
                 report.Position = Filter(calcTarget) / MillimeterScale;
                 report.Pressure = this.pressure;
                 State = report;
+
+                dirOfOutput = (report.Position - lastOutputPos) / timeMult;
+                lastOutputPos = report.Position;
+                //Plot();
 
                 Emit?.Invoke(State);
             }
@@ -190,7 +207,7 @@ namespace UnterpTabletDriverFilters.Devocub
 
             // Devocub smoothing
             // Increase weight of filter in {formula} times
-            var weightModifier = (float)(MathF.Pow((distance * scaleOverride) + AntichatterOffsetX, AntichatterStrength * -1) * AntichatterMultiplier);
+            var weightModifier = (float)(MathF.Pow(((velocity * vOverride + distance * scaleOverride)) + AntichatterOffsetX, AntichatterStrength * -1) * AntichatterMultiplier);
 
             // Limit minimum
             if (weightModifier + AntichatterOffsetY < 0)
@@ -204,14 +221,36 @@ namespace UnterpTabletDriverFilters.Devocub
                 weightModifier = 1;
                 timeMult = 1;
             }
+            weightModifier = MathF.Pow(weightModifier, 1);
             this.position += delta * MathF.Pow(weightModifier, weightPower);
 
-            Console.WriteLine(MathF.Pow(weightModifier, weightPower));
+            
 
             return this.position;
         }
 
         Vector2 MinLength(Vector2 a, Vector2 b) => a.LengthSquared() <= b.LengthSquared() ? a : b;
+
+        Vector2 dirOfOutput, lastOutputPos;
+
+        void Plot() {
+        
+            Console.Write("vx");
+            Console.WriteLine((dirOfOutput.X));
+            Console.Write("vy");
+            Console.WriteLine((dirOfOutput.Y) * -1);
+            /*Console.Write("jx");
+            Console.WriteLine(arc.X);
+            Console.Write("jy");
+            Console.WriteLine(arc.Y * -1);
+            Console.Write("sx");
+            Console.WriteLine(sense.X);
+            Console.Write("sy");
+            Console.WriteLine(sense.Y * -1); */
+            Console.WriteLine("xx");
+            Console.WriteLine("dd");
+            
+        }
 
         private void SetWeight(float latency)
         {
