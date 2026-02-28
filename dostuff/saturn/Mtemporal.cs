@@ -138,7 +138,23 @@ namespace Saturn
         }
         public float _aResponse;
 
-        float correctWeight = 0.01f;
+        [Property("Directional Separation"), DefaultPropertyValue(true), ToolTip
+        (
+            "Only takes effect if Adaptive EMA is enabled.\n" +
+            "Makes it act more like Dual Ring Antichatter."
+        )]
+        public bool dirSeparation { set; get; }
+
+        [Property("Antichatter Amount"), DefaultPropertyValue(100f), ToolTip
+        (
+            "Only takes effect if Adaptive EMA is enabled\n" +
+            "Enable Directional Separation for basically zero added latency on normal movements."
+        )]
+        public float moddist { 
+            set => _moddist = Math.Clamp(value, 0, 1000000.0f);
+            get => _moddist;
+        }
+        public float _moddist;
 
         [Property("Ring Antichatter Toggle"), DefaultPropertyValue(true), ToolTip
         (
@@ -158,16 +174,16 @@ namespace Saturn
         }
         public float _rInner;
 
-        [Property("Outer Radial Mult"), DefaultPropertyValue(1f), ToolTip
+        [Property("Outer Extension"), DefaultPropertyValue(5f), ToolTip
         (
             "Useful values range from 0 to ~10.\n" +
-            "Shouldn't be very high."
+            "Smooths the transition from input to raw."
         )]
-        public float oMult { 
-            set => _oMult = Math.Clamp(value, 0f, 1000000.0f);
-            get => _oMult;
+        public float oSmooth { 
+            set => _oSmooth = Math.Clamp(value, 0f, 1000000.0f);
+            get => _oSmooth;
         }
-        public float _oMult;
+        public float _oSmooth;
 
         [Property("wire"), DefaultPropertyValue(true), ToolTip
         (
@@ -290,6 +306,8 @@ namespace Saturn
                     aemaOutput = pos[0];
                     ringOutput = pos[0];
                     iRingPos0 = pos[0];
+                    aemaHold = pos[0];
+                    lastAemaHold = pos[0];
                     ResetValuesWithoutKf(pos[0]);
                     InsertAtFirst(smpos, pos[0]);
                     if (emergency > 1 && eflag) {
@@ -334,6 +352,8 @@ namespace Saturn
                     ldOutput = pos[0];
                     ringOutput = pos[0];
                     iRingPos0 = pos[0];
+                    aemaHold = pos[0];
+                    lastAemaHold = pos[0];
                     emergency = 3;
                     ResetValues(pos[0]);
                     OnEmit();
@@ -439,14 +459,12 @@ namespace Saturn
                 iRingPos0 += Math.Max(0, dist.Length() - (rInner)) * Default(Vector2.Normalize(dist), Vector2.Zero);
                 ringDir = iRingPos0 - iRingPos1;
                 ringOutput += ringDir;
-
                 if (ringDir.Length() > 0 || dist.Length() > rInner || accel[0] < -10  * areaScale|| vel[0] > 10 * rInner) {
-                ringOutput = capDist(ringOutput, Vector2.Lerp(ringOutput, ldOutput, FSmoothstep(ringDir.Length(), -1, oMult * rInner)), 2000f);
-                ringOutput = Vector2.Lerp(ringOutput, ldOutput, FSmoothstep(accel[0], -10 * areaScale, -200 * areaScale));
-                moveOk = true;
+                    ringOutput = Vector2.Lerp(ringOutput, ldOutput, MathF.Pow(FSmoothstep(ringDir.Length(), -1, oSmooth), 2));
+                    ringOutput = Vector2.Lerp(ringOutput, ldOutput, FSmoothstep(accel[0], -10 * areaScale, -200 * areaScale));
+                    moveOk = true;
                 }
                 else moveOk = false;
-               // Console.WriteLine(ringOutput - ldOutput);
             }
             else {
                 moveOk = true;
@@ -458,16 +476,22 @@ namespace Saturn
             float weight = 1;
             if (aemaToggle) {
                 weight = stockWeight;
-                float mod1 = (1f - stockWeight) * (FSmoothstep(vel[0], 25 * areaScale, 50 * areaScale) - FSmoothstep(vel[0], 150 * areaScale, 250 * areaScale)) * FSmoothstep(MathF.Abs(accel[0]), 30 * areaScale, 10 * areaScale);
-                float dist = Vector2.Distance(aemaOutput, ringOutput);
-                float mod2 = mod1 * FSmoothstep(dist, 0, 50 * areaScale);
-                float mod3 = (1f - stockWeight) * FSmoothstep(dist, 0, 100 * areaScale) * FSmoothstep(accel[0] + Math.Min(0, -jerk[0]), -10 * areaScale, -30 * areaScale);
-                float mod4 = (1 + MathF.Log10(Math.Max(aResponse, 0.75f))) * stockWeight * MathF.Pow(FSmoothstep(dist, 2500 * aResponse * areaScale, (500 * aResponse * areaScale) - 1.0f) * FSmoothstep(accel[0] + Math.Max(0, jerk[0]), 10 * areaScale, 30 * areaScale), 2) * DotNorm(ddir[0], dir[0], 0);
-                weight += Math.Max(mod2, mod3) - mod4;
+                float dist = Vector2.Distance((aemaHold), ringOutput);
+                float mod4 = (1 + MathF.Log10(Math.Max(aResponse, 0.75f))) * stockWeight * MathF.Pow(FSmoothstep(dist, 2500 * aResponse * areaScale, (500 * aResponse * areaScale) - 1.0f) * FSmoothstep(accel[0] + Math.Max(0, jerk[0]), 10 * areaScale, 30 * areaScale), 5) * DotNorm(ddir[0], dir[0], 0);
+                float mod5 = FSmootherstep(dist + vel[0], -0.1f, moddist * areaScale);
+                weight -= (mod4);
                 weight = Math.Clamp(weight, 0, 1);
-              //  Console.WriteLine(weight);
+                weight *= MathF.Pow(mod5, 5.0f);
             }
-            aemaOutput = Vector2.Lerp(aemaOutput, ringOutput, weight);
+           
+            aemaHold = Vector2.Lerp(aemaHold, ringOutput, weight);
+            aemaDir = aemaHold - lastAemaHold;
+            lastAemaHold = aemaHold;
+            aemaOutput += aemaDir;
+
+            if (dirSeparation) {
+                aemaOutput = Vector2.Lerp(aemaOutput, ringOutput, WireAdjust(weight, expect, updateTime, wire) * stockWeight);
+            }
         }
 
         float WireAdjust(float a, float be, float br, bool w) => w ? a * (br / be) : a;
@@ -644,6 +668,7 @@ namespace Saturn
         float[] pointaccel = new float[HMAX];
         uint[] pressure = new uint[HMAX];
         
+        Vector2 aemaDir, aemaHold, lastAemaHold;
         float peakMag, planeMag;
         float ohmygodbruh;
         Vector2 clusterpos0, clusterpos1;
@@ -684,6 +709,7 @@ namespace Saturn
         float pps3;
         bool eflag;
         const float startCorrectWeight = 0.01f;
+        float correctWeight = 0.01f;
         const float msStandard = 3.302466f;
 
         HPETDeltaStopwatch runningStopwatch = new HPETDeltaStopwatch(true);
