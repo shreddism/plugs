@@ -7,7 +7,7 @@ using OpenTabletDriver.Plugin.Timing;
 
 namespace Saturn
 {
-    [PluginName("Saturn - Ring Antichatter")]
+    [PluginName("Saturn - Dual Ring Antichatter")]
     public class RingAC : IPositionedPipelineElement<IDeviceReport>
     {
         public RingAC() : base()
@@ -38,16 +38,27 @@ namespace Saturn
         }
         public float _rInner;
 
-        [Property("Outer Radial Mult"), DefaultPropertyValue(2f), ToolTip
+        [Property("Outer Extension"), DefaultPropertyValue(2f), ToolTip
         (
             "Useful values range from 0 to ~10.\n" +
             "A slight latency compromise to be made if hovering."
         )]
-        public float oMult { 
-            set => _oMult = Math.Clamp(value, 0f, 1000000.0f);
-            get => _oMult;
+        public float oSmooth { 
+            set => _oSmooth = Math.Clamp(value, 0f, 1000000.0f);
+            get => _oSmooth;
         }
-        public float _oMult;
+        public float _oSmooth;
+
+        [Property("Distance/Velocity Power"), DefaultPropertyValue(2f), ToolTip
+        (
+            "Useful values range from 0 to ~10.\n" +
+            "A slight latency compromise to be made if hovering."
+        )]
+        public float dvPow { 
+            set => _dvPow = Math.Clamp(value, 0f, 1000000.0f);
+            get => _dvPow;
+        }
+        public float _dvPow;
 
         [Property("Expected Time"), DefaultPropertyValue(false), ToolTip
         (
@@ -78,12 +89,14 @@ namespace Saturn
                 ringOutput += ringDir;
 
                 if (ringDir.Length() > 0 || dist.Length() > rInner || accel[0] < -10  * areaScale|| vel[0] > 10 * rInner) {
-                ringOutput = capDist(ringOutput, Vector2.Lerp(ringOutput, pos[0], timeScale * FSmoothstep(ringDir.Length(), -1, oMult * rInner)), 2000f);
+                ringOutput = Vector2.Lerp(ringOutput, report.Position, MathF.Pow(FSmoothstep(ringDir.Length() + vel[0], -1, oSmooth), 4));
                 ringOutput = Vector2.Lerp(ringOutput, pos[0], FSmoothstep(accel[0], -10 * areaScale, -200 * areaScale));
                 }
                 if (vec2IsFinite(ringOutput))
                 report.Position = ringOutput;
+                Plot();
             }
+            
             Emit?.Invoke(value);
         }
 
@@ -104,6 +117,27 @@ namespace Saturn
         {
             x = Math.Clamp((x - start) / (end - start), 0.0f, 1.0f);
             return x * x * (3.0f - 2.0f * x);
+        }
+
+        void Plot() {
+            Console.Write("vx");
+            Console.WriteLine(((ringOutput - ringInputPos0).X));
+            Console.Write("vy");
+            Console.WriteLine(((ringOutput - ringInputPos0).Y) * -1);
+           /* Console.Write("ax");
+            Console.WriteLine(((ringOutput - ldOutput).X));
+            Console.Write("ay");
+            Console.WriteLine(((ringOutput - ldOutput).Y) * -1);
+            Console.Write("jx");
+            Console.WriteLine(arc.X);
+            Console.Write("jy");
+            Console.WriteLine(arc.Y * -1);
+            Console.Write("sx");
+            Console.WriteLine(sense.X);
+            Console.Write("sy");
+            Console.WriteLine(sense.Y * -1); */
+            Console.WriteLine("xx");
+            Console.WriteLine("dd");
         }
 
         const int HMAX = 4;
