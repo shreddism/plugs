@@ -33,15 +33,7 @@ namespace Saturn
         public float _reverseSmoothing;
         
 
-        [Property("Directional Antichatter Toggle"), DefaultPropertyValue(true), ToolTip
-        (
-            "Antichatter, but applied to direction per report's point instead.\n" +
-            "Improves frame pacing heavily in small area scenarios given proper settings.\n" +
-            "Your tablet should hopefully have even internal report intervals (Wacom)"
-        )]
-        public bool dacToggle { set; get; }
-
-        [Property("Directional Antichatter Inner 'Radius'"), DefaultPropertyValue(0f), ToolTip
+        [Property("Directional Antichatter 'Inner Radius'"), DefaultPropertyValue(0f), ToolTip
         (
             "Similar method to Radial Follow. The unit of this is tablet raw data unit per report.\n" +
             "If on a large-small area on a Wacom Pro, try 0-1 respectively.\n" +
@@ -54,7 +46,7 @@ namespace Saturn
         }
         public float _dacInner;
 
-        [Property("Directional Antichatter Outer 'Radius'"), DefaultPropertyValue(2f), ToolTip
+        [Property("Directional Antichatter 'Outer Radius'"), DefaultPropertyValue(3f), ToolTip
         (
             "Similar method to Radial Follow. The unit of this is tablet raw data unit per report.\n" +
             "If on a large-small area on a Wacom Pro, try 1-3 respectively.\n" +
@@ -67,15 +59,20 @@ namespace Saturn
         }
         public float _dacOuter;
 
-        [Property("Adaptive EMA Toggle"), DefaultPropertyValue(true), ToolTip
+        [Property("Velocity 'Outer Range'"), DefaultPropertyValue(2f), ToolTip
         (
-            "lololol"
+            "Will act the same, but for magnitude of direction.\n" +
+            "No functionality changes, this was just internally set to the above option in early builds." 
         )]
-        public bool aemaToggle { set; get; }
+        public float vOuter { 
+            set => _vOuter = Math.Max(value, 0.1f);
+            get => _vOuter;
+        }
+        public float _vOuter;
 
-        [Property("Stock Adaptive EMA Weight"), DefaultPropertyValue(1.0f), ToolTip
+        [Property("Stock EMA Weight"), DefaultPropertyValue(1.0f), ToolTip
         (
-            "EMA weight, but it can change based on the movement situation/amount of lag there is, based on internal thresholds.\n" +
+            "EMA weight, but it can change based on the current situation and internal thresholds.\n" +
             "This should hold for any reasonable area."
         )]
         public float stockWeight { 
@@ -84,10 +81,10 @@ namespace Saturn
         }
         public float _stockWeight;
 
-        [Property("Accel Response Aggressiveness"), DefaultPropertyValue(1.5f), ToolTip
+        [Property("Accel Response Aggressiveness"), DefaultPropertyValue(1f), ToolTip
         (
-            "Useful values range between 0 and 2.\n" +
-            "Do not put above 0 if you hover or are putting this after an interpolator, as reporting becomes buggy.\n" +
+            "Useful values range between 0 and 2, but can go higher\n" +
+            "Do not put above 0 if you hover on a PTK-470, as reporting becomes buggy.\n" +
             "Makes aim 'snappier' on sharp accel."
         )]
         public float aResponse { 
@@ -96,35 +93,19 @@ namespace Saturn
         }
         public float _aResponse;
 
-        [Property("Directional Separation"), DefaultPropertyValue(true), ToolTip
+        [Property("Directional Separation"), DefaultPropertyValue(1f), ToolTip
         (
-            "Only takes effect if Adaptive EMA is enabled.\n" +
-            "Makes it act more like Dual Ring Antichatter."
+            "Only takes effect if Adaptive EMA is enabled."
         )]
-        public bool dirSeparation { set; get; }
-
-        [Property("Antichatter Amount"), DefaultPropertyValue(100f), ToolTip
-        (
-            "Only takes effect if Adaptive EMA is enabled\n" +
-            "Enable Directional Separation for basically zero added latency on normal movements."
-        )]
-        public float moddist { 
-            set => _moddist = Math.Clamp(value, 0, 1000000.0f);
-            get => _moddist;
+        public float dirSeparation {
+            set => _dirSeparation = Math.Clamp(value, 0, 1.0f);
+            get => _dirSeparation;
         }
-        public float _moddist;
+        public float _dirSeparation;
 
-        [Property("Ring Toggle"), DefaultPropertyValue(true), ToolTip
+        [Property("Inner Radius"), DefaultPropertyValue(5f), ToolTip
         (
-            "Ring Antichatter is relatively simple, making it non-invasive and low-latency.\n" +
-            "It works similarly to Radial Follow, but it ensures\n" +
-            "to not underaim if the radius is anything over the raw tablet noise."
-        )]
-        public bool ringToggle { set; get; }
-
-        [Property("Ring Radius"), DefaultPropertyValue(5f), ToolTip
-        (
-            "The cursor will not move if it has not moved this much. Unit is raw data."
+            "The cursor will not move if the pen has not moved this much. Unit is raw data."
         )]
         public float rInner { 
             set => _rInner = Math.Clamp(value, 0f, 1000000.0f);
@@ -132,26 +113,52 @@ namespace Saturn
         }
         public float _rInner;
 
-        [Property("Outer Extension"), DefaultPropertyValue(5f), ToolTip
+        [Property("Additional Antichatter"), DefaultPropertyValue(100f), ToolTip
         (
-            "Useful values range from 0 to ~10.\n" +
-            "Smooths the transition from input to raw."
+            "Only takes effect if Adaptive EMA is enabled\n" +
+            "Enable Directional Separation for basically zero added latency on normal movements."
         )]
-        public float oSmooth { 
-            set => _oSmooth = Math.Clamp(value, 0f, 1000000.0f);
-            get => _oSmooth;
+        public float moddist { 
+            set => _moddist = Math.Clamp(value, 0f, 1000000.0f);
+            get => _moddist;
         }
-        public float _oSmooth;
+        public float _moddist;
+
+        [Property("Antichatter Power"), DefaultPropertyValue(5f), ToolTip
+        (
+            "Raises the antichatter's weight to this value."
+        )]
+        public float modPow { 
+            set => _modPow = Math.Clamp(value, 0f, 1000000.0f);
+            get => _modPow;
+        }
+        public float _modPow;
 
         [Property("Area Scale"), DefaultPropertyValue(0.5f), ToolTip
         (
             "Multiplies every area-subjective threshold."
         )]
         public float areaScale { 
-            set => _areaScale = Math.Clamp(value, 0.2f, 5f);
+            set => _areaScale = Math.Clamp(value, 0.01f, 5f);
             get => _areaScale;
         }
         public float _areaScale;
+
+        [Property("Expect Wire"), DefaultPropertyValue(false), ToolTip
+        (
+            "a"
+        )]
+        public bool wire { set; get; }
+
+        [Property("Expect Time"), DefaultPropertyValue(1f), ToolTip
+        (
+            "a"
+        )]
+        public float expect { 
+            set => _expect = Math.Clamp(value, 0f, 1000000.0f);
+            get => _expect;
+        }
+        public float _expect;
 
         public event Action<IDeviceReport> Emit;
 
@@ -181,21 +188,26 @@ namespace Saturn
                 
               //  bottom = -1 * Math.Max(alpha0 - vtlimiter, 0);
 
-                ldDir = stdir[0];
-                ldOutput += stdir[0];
+                startOutput += stdir[0];
 
-                RF();
+                if (rInner > 0f) RF();
+                else {
+                    moveOk = true;
+                    ringOutput = startOutput;
+                }
 
                 if (moveOk && emergency == 0 && !liftorpress) {
-                ldOutput = Vector2.Lerp(ldOutput, pos[0], dumbWeight);
-                ldOutput = Vector2.Lerp(ldOutput, pos[0], dumbWeight * FSmoothstep(accel[0], -10 * areaScale, -200 * areaScale));
+                float cWeight = WireMultAdjust(dumbWeight, expect, reportTime, wire);
+                float dWeight = cWeight * FSmoothstep(accel[0], -10 * areaScale, -200 * areaScale);
+                startOutput = Vector2.Lerp(startOutput, pos[0], cWeight);
+                startOutput = Vector2.Lerp(startOutput, pos[0], dWeight);
                 }
 
                 AEMA();
 
                 report.Position = aemaOutput;
 
-                if (!vec2IsFinite(report.Position + ringOutput + iRingPos0 + ldOutput)) {
+                if (!vec2IsFinite(report.Position + ringOutput + iRingPos0 + startOutput)) {
                     emergency = 4;
                 }
 
@@ -203,7 +215,7 @@ namespace Saturn
 
                 if (emergency > 0) {
                     report.Position = pos[0];
-                    ldOutput = pos[0];
+                    startOutput = pos[0];
                     aemaOutput = pos[0];
                     ringOutput = pos[0];
                     iRingPos0 = pos[0];
@@ -336,7 +348,7 @@ namespace Saturn
         }
 
         void DAC() {
-            if (dacToggle) {
+            if (dacInner + dacOuter > 0f) {
                 float vscale = FSmoothstep(vel[0], 5, 15 + dacOuter);
                 float scale = MathF.Pow(FSmoothstep(Math.Max(pointaccel[0], Vector2.Distance(stdir[0], dir[0])), Math.Max(0, vscale * dacInner), 0.01f + (vscale * dacOuter)), 3);
                 Vector2 stabilized = Vector2.Lerp(stdir[0], dir[0], scale);
@@ -352,39 +364,34 @@ namespace Saturn
         }
 
         void RF() {
-            if (ringToggle) {
-                ringInputPos1 = ringInputPos0;
-                ringInputPos0 = ldOutput;
-                ringInputDir = ringInputPos0 - ringInputPos1;
-                Vector2 dist = ldOutput - iRingPos0;
-                iRingPos1 = iRingPos0;
-                iRingPos0 += Math.Max(0, dist.Length() - (rInner)) * Default(Vector2.Normalize(dist), Vector2.Zero);
-                ringDir = iRingPos0 - iRingPos1;
-                ringOutput += ringDir;
-                if (ringDir.Length() > 0 || dist.Length() > rInner || accel[0] < -10  * areaScale|| vel[0] > 10 * rInner) {
-                    ringOutput = Vector2.Lerp(ringOutput, ldOutput, MathF.Pow(FSmoothstep(ringDir.Length(), -1, oSmooth), 2));
-                    ringOutput = Vector2.Lerp(ringOutput, ldOutput, FSmoothstep(accel[0], -10 * areaScale, -200 * areaScale));
-                    moveOk = true;
-                }
-                else moveOk = false;
-            }
-            else {
+            ringInputPos1 = ringInputPos0;
+            ringInputPos0 = startOutput;
+            ringInputDir = ringInputPos0 - ringInputPos1;
+            Vector2 dist = startOutput - iRingPos0;
+            iRingPos1 = iRingPos0;
+            iRingPos0 += Math.Max(0, dist.Length() - (rInner)) * Default(Vector2.Normalize(dist), Vector2.Zero);
+            ringDir = iRingPos0 - iRingPos1;
+            ringOutput += ringDir;
+            if (ringDir.Length() > 0 || dist.Length() > rInner || accel[0] < -10 * areaScale || vel[0] > 10 * rInner) {
+                ringOutput = Vector2.Lerp(ringOutput, startOutput, FSmoothstep(ringDir.Length(), -0.01f, moddist));
+                ringOutput = Vector2.Lerp(ringOutput, startOutput, FSmoothstep(accel[0], -10 * areaScale, -200 * areaScale));
                 moveOk = true;
-                ringOutput = ldOutput;
             }
+            else moveOk = false;
         }
 
         void AEMA() {
             float weight = 1;
-            if (aemaToggle) {
+
+            if (stockWeight < 1f || moddist > 0f || aResponse > 0f) {
                 weight = stockWeight;
-                float dist = Vector2.Distance((aemaHold), ringOutput);
-                float mod4 = (1 + MathF.Log10(Math.Max(aResponse, 0.75f))) * stockWeight * MathF.Pow(FSmoothstep(dist, 2500 * aResponse * areaScale, (500 * aResponse * areaScale) - 1.0f) * FSmoothstep(accel[0] + Math.Max(0, jerk[0]), 10 * areaScale, 30 * areaScale), 5) * DotNorm(ddir[0], dir[0], 0);
-                float mod5 = FSmootherstep(dist + vel[0], -0.1f, moddist * areaScale);
+                float dist = Vector2.Distance((aemaHold), ringOutput); 
+                if (wire) dist *= MathF.Pow(MathF.Pow(Math.Min(updateTime / expect, 1.5f), 1 / MathF.Pow(stockWeight, 1 + FSmoothstep(vel[0], 0, moddist))), 1 / (modPow)); // I HAVE NO IDEA HOW OR WHY THIS WORKS BUT THIS REDUCES MOST RACKET UNDER NORMAL SCENARIOS!!!!!!
+                float mod4 = (1 + MathF.Log10(Math.Max(aResponse, 1f))) * stockWeight * MathF.Pow(FSmoothstep(dist, 5000 * aResponse * areaScale, (500 * aResponse * areaScale) - 1.0f) * FSmoothstep(accel[0] + Math.Max(0, jerk[0]), 10 * areaScale, 30 * areaScale), modPow) * DotNorm(ddir[0], dir[0], 0);
+                float mod5 = FSmoothstep(dist + vel[0] - (Math.Min(2.0f, aResponse) * accel[0]) + accel[0], -0.01f, moddist);
                 weight -= (mod4);
                 weight = Math.Clamp(weight, 0, 1);
-                weight *= MathF.Pow(mod5, 5.0f);
-
+                weight *= MathF.Pow(mod5, modPow);
             }
            
             aemaHold = Vector2.Lerp(aemaHold, ringOutput, weight);
@@ -392,10 +399,14 @@ namespace Saturn
             lastAemaHold = aemaHold;
             aemaOutput += aemaDir;
 
-            if (dirSeparation) {
-                aemaOutput = Vector2.Lerp(aemaOutput, ringOutput, weight * stockWeight);
+            if (dirSeparation > 0) {
+                aemaOutput = Vector2.Lerp(aemaOutput, ringOutput, dirSeparation * WireMultAdjust(MathF.Pow(weight, 3 - dirSeparation), expect, updateTime, wire) * stockWeight);
             }
         }
+
+        float WireMultAdjust(float a, float be, float br, bool w) => w ? a * (br / be) : a;
+
+        Vector2 WireMultAdjust(Vector2 a, float be, float br, bool w) => w ? a * (br / be) : a;
 
         float DotNorm(Vector2 a, Vector2 b) => Vector2.Dot(Vector2.Normalize(a), Vector2.Normalize(b));
 
@@ -453,6 +464,7 @@ namespace Saturn
         float[] pointaccel = new float[HMAX];
         uint[] pressure = new uint[HMAX];
         
+        Vector2 startOutput;
         float dumbWeight = 0.01f;
         Vector2 aemaDir, aemaHold, lastAemaHold;
         float peakMag, planeMag;
