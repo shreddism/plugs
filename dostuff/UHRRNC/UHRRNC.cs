@@ -53,6 +53,20 @@ namespace UHRRNC
         }
         public float _opt5;
 
+        [Property("opt6"), DefaultPropertyValue(1f)]
+        public float opt6 { 
+            set => _opt6 = (value);
+            get => _opt6;
+        }
+        public float _opt6;
+
+        [BooleanProperty("opt7", ""), DefaultPropertyValue(false)]
+        public bool opt7 { 
+            set => _opt7 = value;
+            get => _opt7;
+        }
+        public bool _opt7;
+
         public event Action<IDeviceReport> Emit;
 
         public void Consume(IDeviceReport value)
@@ -73,10 +87,14 @@ namespace UHRRNC
                     return;
                 }
 
-                if (init && opt1 > 0f && opt2 > 0f) {
                     cdir = report.Position - lpos;
 
                     caccel = cdir - ldir;       
+
+
+
+                if (init && opt1 > 0f && opt2 > 0f) {
+
 
                    /*float wale = 0.1f + 0.15f * Smoothstep(caccel.Length(), opt1 * 2f, opt1 * 4f) + 0.15f * Smoothstep(wtf.Length(), opt1 * 2f, opt1 * 4f);     
 
@@ -110,7 +128,7 @@ namespace UHRRNC
 
                     paccel *= opt3;
                     
-                    wtf += (Math.Max(Smoothstep(caccel.Length(), opt1 * 4f, opt1 * 6f), Smoothstep(paccel.Length(), opt1, opt1 * 3f))) * Math.Max(Vector2.Distance(wtf, caccel) - opt1 * 2f, 0f) * Normalize((0.67f * deepac + 0.33f * caccel) - wtf);
+                    wtf += 0.5f * (Math.Max(Smoothstep(caccel.Length(), opt1 * 4f, opt1 * 6f), Smoothstep(paccel.Length(), opt1, opt1 * 3f))) * Math.Max(Vector2.Distance(wtf, caccel) - opt1 * 2f, 0f) * Normalize((0.67f * deepac + 0.33f * caccel) - wtf);
 
                     adir += wtf * Smoothstep(wtf.Length(), opt1 * 0.25f, opt1);
 
@@ -122,7 +140,13 @@ namespace UHRRNC
 
                     pdir *= opt3;
 
-                    adir += Math.Max(Smoothstep(cdir.Length(), opt1 * 2f, opt1 * 3f), Smoothstep(pdir.Length(), opt1, opt1 * 1.5f)) * Math.Max(Vector2.Distance(adir, cdir) - opt1, 0f) * Normalize(cdir - adir);
+                    Vector2 vdiff = Math.Max(Smoothstep(cdir.Length(), opt1 * 2f, opt1 * 3f), Smoothstep(pdir.Length(), opt1, opt1 * 1.5f)) * Math.Max(Vector2.Distance(adir, cdir) - opt1, 0f) * Normalize(cdir - adir);
+                    
+                    adir += 0.5f * vdiff;
+
+                    if (opt7) {
+                        wtf += 0.25f * vdiff;
+                    }
 
                     opos += opt2 * Smoothstep(adir.Length(), opt1 * 0.05f, opt1 * 0.33f) * adir;
 
@@ -132,29 +156,48 @@ namespace UHRRNC
                     
                     ppos *= opt3;
 
-                    Vector2 finaldiff = 0.5f * Math.Max(Smoothstep(Vector2.Distance(opos, report.Position), opt1 * 1f, opt1 * 1.5f), Smoothstep(ppos.Length(), opt1 * 0.5f, opt1 * 2f)) * Math.Max(Vector2.Distance(opos, report.Position) - opt1 * 0.5f, 0f) * Normalize(report.Position - opos);
+                    Vector2 finaldiff = Math.Max(Smoothstep(Vector2.Distance(opos, report.Position), opt1 * 1f * Smoothstep(adir.Length(), opt1, 0f), opt1 * opt6), Smoothstep(ppos.Length(), opt1 * 0.5f * opt6, opt1 * 1.5f * opt6)) * Math.Max(Vector2.Distance(opos, report.Position) - opt1 * 0.5f, 0f) * Normalize(report.Position - opos);
 
-                    opos += finaldiff;
+                    opos += 0.5f * finaldiff;
 
-                    adir += 0.5f * finaldiff;
+                    if (opt7) {
+                        adir += 0.25f * finaldiff;
+                        wtf += 0.125f * finaldiff;
+                    }
 
-                    wtf += 0.25f * finaldiff;
+                    odir = opos - lopos;
+                    lopos = opos;
 
-                    if (opt5 < 1f) {
+                    if (false){//opt5 < 1f) {
                         smoo = Vector2.Lerp(smoo, opos, opt5);
                     }
                     else smoo = opos;
 
-                    //opos = Vector2.Lerp(opos, report.Position, (0.5f + 0.5f * Smoothstep(adir.Length(), 0f, opt1)) * Smoothstep(ppos.Length(), 0f, opt1 * (2f - Smoothstep(adir.Length() - dell.Length(), 0f, -25f))));
-                  Console.WriteLine(opos - report.Position);
+                 //   opos = Vector2.Lerp(opos, report.Position, (0.5f + 0.5f * Smoothstep(adir.Length(), 0f, opt1)) * Smoothstep(ppos.Length(), 0f, opt1 * (2f - Smoothstep(adir.Length() - dell.Length(), 0f, -25f))));
+                 
+                    
+                    
 
                 }
-               
                 lpos = report.Position;
                 ldir = cdir;
+                sim = Vector2.Lerp(sim, report.Position, opt5);
+                simdir = sim - lsim;
+                lsim = sim;
+                
+
+             //   PlotD("v", cdir, false);
+            //    PlotD("a", simdir, false);
+             //   PlotD("j", odir, true);
+                sd = smoo - ls;
+
+                //PlotD("v", simdir, false);
+               // PlotD("j", sd, true);
+
                 report.Position = smoo;
-                odir = smoo - lopos;
-                lopos = smoo;
+
+                ls = smoo;
+                
                 init = true;
             }
             Emit?.Invoke(value);
@@ -165,7 +208,8 @@ namespace UHRRNC
         Vector2 wisc;
         Vector2 cdisc;
         Vector2 ucel;
-        Vector2 smoo;
+        Vector2 smoo, sd, ls;
+        Vector2 sim, lsim, simdir;
         Vector2 ppos, pdir, paccel;
         Vector2 deepac, dell;
         bool init;
@@ -248,7 +292,7 @@ namespace UHRRNC
         {
             if (value is ITabletReport report)
             {
-            //    UHRRNC.PlotD("v", report.Position - lpos, false);
+              //  UHRRNC.PlotD("s", report.Position - lpos, false);
                 lpos = report.Position;
 
                 if (!init) {
