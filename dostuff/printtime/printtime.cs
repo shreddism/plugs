@@ -53,7 +53,11 @@ namespace printtime
                 if (ct > 50) {
                    // total += dt;
                    // tick += 1.0;
-                    Console.WriteLine(dt);
+                    
+                        Console.WriteLine(Math.Round(dt, 1, MidpointRounding.AwayFromZero));
+                    //    Console.WriteLine(report.Position);
+                      //  Console.WriteLine("------");
+                    
                 }
               //  if (!init) {
               //  Initialize();

@@ -5,12 +5,12 @@ using OpenTabletDriver.Plugin.Output;
 using OpenTabletDriver.Plugin.Tablet;
 using OpenTabletDriver.Plugin.Timing;       
 
-namespace UHRRNC
+namespace Saturn
 {
-    [PluginName("Noise Compensation Test")]
-    public class UHRRNC : IPositionedPipelineElement<IDeviceReport>
+    [PluginName("Saturn - Noise Compensation Test")]
+    public class NCT : IPositionedPipelineElement<IDeviceReport>
     {
-        public UHRRNC() : base()
+        public NCT() : base()
         {
         }
 
@@ -67,15 +67,40 @@ namespace UHRRNC
         }
         public bool _opt7;
 
+        [BooleanProperty("opt8", ""), DefaultPropertyValue(false)]
+        public bool opt8 {
+            set => _opt8 = value;
+            get => _opt8;
+        }
+        public bool _opt8;
+
+        [Property("opt9"), DefaultPropertyValue(1f)]
+        public float opt9 { 
+            set => _opt9 = (value);
+            get => _opt9;
+        }
+        public float _opt9;
+
         public event Action<IDeviceReport> Emit;
+
+        int pt;
 
         public void Consume(IDeviceReport value)
         {
+            tick++;
+
             if (value is ITabletReport report)
             {
                 float reportTime = (float)reportStopwatch.Restart().TotalMilliseconds;
+                reportMsAvg = 0.9f * reportMsAvg + 0.1f * reportTime;
 
-                if (!init || reportTime > 25f) {
+
+                if (tabletType == 1 && reportMsAvg < 6.25f && tick > 10) {
+                    adjustmentType = 1;
+                }
+
+                if (!init || reportTime > 25f) { 
+                    TabletMode(name);
                     opos = report.Position;
                     odir = Vector2.Zero;
                     adir = Vector2.Zero;
@@ -84,41 +109,21 @@ namespace UHRRNC
                     ldir = Vector2.Zero;
                     lpos = report.Position;
                     paccel = Vector2.Zero;
+                    ppos = Vector2.Zero;
+                    pdir = Vector2.Zero;
                     return;
                 }
 
                     cdir = report.Position - lpos;
 
-                    caccel = cdir - ldir;       
+
+                    caccel = cdir - ldir;   
+
+                  
+                    conf = opt1;
 
 
-
-                if (init && opt1 > 0f && opt2 > 0f) {
-
-
-                   /*float wale = 0.1f + 0.15f * Smoothstep(caccel.Length(), opt1 * 2f, opt1 * 4f) + 0.15f * Smoothstep(wtf.Length(), opt1 * 2f, opt1 * 4f);     
-
-                    wale = inversion(wale, opt2);
-
-                    wtf = (1f - wale) * wtf + (wale) * caccel;
-
-                    adir += wtf * Smoothstep(wtf.Length(), opt1 * 0.0f, opt1 * 0.75f);
-
-                    float vale = 0.15f + 0.05f * Smoothstep(cdir.Length(), opt1 * 0.5f, opt1 * 2f) + 0.05f * Smoothstep(adir.Length(), opt1 * 0.5f, opt1 * 2f) + 0.075f * Smoothstep(caccel.Length(), opt1 * 2f, opt1 * 4f) + 0.075f * Smoothstep(wtf.Length(), opt1 * 2f, opt1 * 4f);
-
-                    vale = inversion(wale, opt2);
-                    
-                    adir = (1f - vale) * adir + (vale) * cdir;
-
-                    opos += adir * Smoothstep(adir.Length(), opt1 * 0.2f, opt1 * 0.5f);
-
-                    float ale = (0.5f + 0.5f * Smoothstep(adir.Length(), opt1 * 0.5f, opt1)) * Smoothstep(Vector2.Distance(opos, report.Position), opt1 * 0.0f, opt1 * 1.5f);
-
-                    ale = inversion(ale, MathF.Sqrt(opt2));
-
-                    opos = Vector2.Lerp(opos, report.Position, ale);
-
-                    Console.WriteLine(Vector2.Distance(opos, report.Position));*/
+             
 
                     wtf = Vector2.Lerp(wtf, caccel, inversion(0.1f, opt4));
 
@@ -127,10 +132,12 @@ namespace UHRRNC
                     paccel += wtf - caccel;
 
                     paccel *= opt3;
-                    
-                    wtf += 0.5f * (Math.Max(Smoothstep(caccel.Length(), opt1 * 4f, opt1 * 6f), Smoothstep(paccel.Length(), opt1, opt1 * 3f))) * Math.Max(Vector2.Distance(wtf, caccel) - opt1 * 2f, 0f) * Normalize((0.67f * deepac + 0.33f * caccel) - wtf);
 
-                    adir += wtf * Smoothstep(wtf.Length(), opt1 * 0.25f, opt1);
+                    Vector2 acdiff = (Math.Max(Smoothstep(caccel.Length(), conf * 4f, conf * 6f), Smoothstep(paccel.Length(), conf, conf * 3f))) * Math.Max(Vector2.Distance(wtf, caccel) - conf * 2f, 0f) * Normalize((0.67f * deepac + 0.33f * caccel) - wtf);
+                    
+                    wtf += opt9 * acdiff;
+                    
+                    adir += opt2 * wtf * Smoothstep(wtf.Length(), conf * 0.25f, conf);
 
                     adir = Vector2.Lerp(adir, cdir, inversion(0.1f, opt4));
 
@@ -140,45 +147,49 @@ namespace UHRRNC
 
                     pdir *= opt3;
 
-                    Vector2 vdiff = Math.Max(Smoothstep(cdir.Length(), opt1 * 2f, opt1 * 3f), Smoothstep(pdir.Length(), opt1, opt1 * 1.5f)) * Math.Max(Vector2.Distance(adir, cdir) - opt1, 0f) * Normalize(cdir - adir);
+                    Vector2 vdiff = Math.Max(Smoothstep(cdir.Length(), conf * 2f, conf * 3f), Smoothstep(pdir.Length(), conf, conf * 1.5f)) * Math.Max(Vector2.Distance(adir, cdir) - conf, 0f) * Normalize(cdir - adir);
+                
+                    adir += opt9 * vdiff;
+                    wtf += (opt9 / 2.0f) * vdiff;
                     
-                    adir += 0.5f * vdiff;
+                    opos += Smoothstep(Vector2.Distance(opos, report.Position), 0, opt1 * 0.25f) * opt2 * Smoothstep(adir.Length(), conf * 0.05f, conf * 0.33f) * adir;
 
-                    if (opt7) {
-                        wtf += 0.25f * vdiff;
-                    }
-
-                    opos += opt2 * Smoothstep(adir.Length(), opt1 * 0.05f, opt1 * 0.33f) * adir;
-
-                    opos = Vector2.Lerp(opos, report.Position, inversion(0.1f * Smoothstep(adir.Length(), opt1 * 4f, 0f), opt4));
+                    opos = Vector2.Lerp(opos, report.Position, inversion(0.1f * Smoothstep(adir.Length(), conf * 4f, 0f), opt4));
 
                     ppos += opos - report.Position;
                     
-                    ppos *= opt3;
+                    ppos *= MathF.Sqrt(opt3);
 
-                    Vector2 finaldiff = Math.Max(Smoothstep(Vector2.Distance(opos, report.Position), opt1 * 1f * Smoothstep(adir.Length(), opt1, 0f), opt1 * opt6), Smoothstep(ppos.Length(), opt1 * 0.5f * opt6, opt1 * 1.5f * opt6)) * Math.Max(Vector2.Distance(opos, report.Position) - opt1 * 0.5f, 0f) * Normalize(report.Position - opos);
+                    Vector2 finaldiff = Math.Max(Smoothstep(Vector2.Distance(opos, report.Position), conf * 1f * Smoothstep(adir.Length(), conf, 0f), conf * opt6), Smoothstep(ppos.Length(), conf * 0.5f * opt6, conf * 1.5f * opt6)) * Math.Max(Vector2.Distance(opos, report.Position) - conf * 0.5f, 0f) * Normalize(report.Position - opos);
 
-                    opos += 0.5f * finaldiff;
-
-                    if (opt7) {
-                        adir += 0.25f * finaldiff;
-                        wtf += 0.125f * finaldiff;
-                    }
-
+                    opos += (opt9) * finaldiff;
+                    adir += (opt9 / 2.0f) * finaldiff;
+                    wtf += (opt9 / 4.0f) * finaldiff;
+                    
                     odir = opos - lopos;
                     lopos = opos;
 
-                    if (false){//opt5 < 1f) {
+                    if (opt5 < 1f) {
                         smoo = Vector2.Lerp(smoo, opos, opt5);
                     }
                     else smoo = opos;
 
+
                  //   opos = Vector2.Lerp(opos, report.Position, (0.5f + 0.5f * Smoothstep(adir.Length(), 0f, opt1)) * Smoothstep(ppos.Length(), 0f, opt1 * (2f - Smoothstep(adir.Length() - dell.Length(), 0f, -25f))));
                  
-                    
-                    
 
-                }
+                    float c = Vector2.Cross(Normalize(cdir), Normalize(ldir));
+
+                    if (float.IsFinite(c)) {
+                        ac = 0.9f * ac + 0.1f * c;
+                    }
+                    
+                    if (cdir.Length() > 25) {
+                     //   Console.WriteLine(ac);
+                    }
+           // Console.WriteLine("?");
+
+                
                 lpos = report.Position;
                 ldir = cdir;
                 sim = Vector2.Lerp(sim, report.Position, opt5);
@@ -186,7 +197,7 @@ namespace UHRRNC
                 lsim = sim;
                 
 
-             //   PlotD("v", cdir, false);
+            //    PlotD("v", cdir, false);
             //    PlotD("a", simdir, false);
              //   PlotD("j", odir, true);
                 sd = smoo - ls;
@@ -194,18 +205,40 @@ namespace UHRRNC
                 //PlotD("v", simdir, false);
                // PlotD("j", sd, true);
 
+               init = true;
+                if (!float.IsFinite(smoo.X)) {
+                    Console.WriteLine("??");
+                    smoo = report.Position;
+                    init = false;
+                    
+                }
+
+                     //   Console.WriteLine(report.Position - opos);
+
+
                 report.Position = smoo;
 
+
                 ls = smoo;
+
                 
-                init = true;
+                
+                
             }
             Emit?.Invoke(value);
         }
 
+        float reportMsAvg;
+        int tick;
+
+        float conf;
+
+        float ac = 0f;
+
         Vector2 opos, odir, lpos, lopos, ldir, caccel, wtf;
         Vector2 cdir, adir = Vector2.Zero;
         Vector2 wisc;
+     //   float[] cross = new float[6];
         Vector2 cdisc;
         Vector2 ucel;
         Vector2 smoo, sd, ls;
@@ -249,6 +282,28 @@ namespace UHRRNC
         }
 
         public Vector2 Normalize(Vector2 a) => (a != Vector2.Zero) ? (a / a.Length()) : Vector2.Zero;
+
+        [TabletReference]
+        public TabletReference TabletReference { set { name = value.Properties.Name; } }
+        public string name = string.Empty;
+
+        public int tabletType;
+
+        public void TabletMode(string tabletName) {
+            switch (tabletName) {
+                case "Wacom CTL-480":
+                    tabletType = 1;
+                    reportMsAvg = 7.5f;
+                break;
+                default:
+                    tabletType = 0;
+                break;
+            }
+
+            //Console.WriteLine(tabletType);
+        }
+
+        public int adjustmentType = 0;
 
     }
 
