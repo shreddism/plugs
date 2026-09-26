@@ -35,7 +35,7 @@ namespace CustomFirmwareSettings
         )]
         public int freq
         {
-            set => _freq = Math.Clamp(value, 133, 1000);
+            set => _freq = Math.Clamp(value, 100, 1500);
             get => _freq;
         }
         public int _freq;
@@ -45,6 +45,18 @@ namespace CustomFirmwareSettings
             "f"
         )]
         public bool buttons { set; get; }
+
+        [BooleanProperty("motionsync", ""), DefaultPropertyValue(false), ToolTip
+        (
+            "m"
+        )]
+        public bool motionsync { set; get; }
+
+        [BooleanProperty("Persistence", ""), DefaultPropertyValue(false), ToolTip
+        (
+            "m"
+        )]
+        public bool persistence { set; get; }
 
         public PipelinePosition Position => PipelinePosition.PreTransform;
 
@@ -98,7 +110,6 @@ namespace CustomFirmwareSettings
 
         bool init;
 
-
         private FeatureReportAccess? OpenConfigInterface()
         {
             if (tabletType == 1) {
@@ -117,22 +128,47 @@ namespace CustomFirmwareSettings
                         buffer1[1] = 0xf0;
                     }
                     _stream.SetFeature(buffer1);
-                    
-
-                    Console.WriteLine(check[1]);
                 }
                 
-                
-                
+                if (_stream.GetFeature(96, length: 64, out var buffer2)) {
+                    if (buffer2[1] == 84 && buffer2[2] == 86) {
+                        if (buffer2[63] != 66) {
+                            Console.WriteLine("!!");
+                        }
 
+                        byte[] ptkx70tvwrite = new byte[64];
+                        ptkx70tvwrite[0] = 96;
+                        ptkx70tvwrite[1] = 84;
+                        ptkx70tvwrite[2] = 86;
+                        ptkx70tvwrite[3] = 1;
+                        ptkx70tvwrite[4] = (byte)((freq) & 0xff);
+                        ptkx70tvwrite[5] = (byte)((freq >> 8) & 0xff);
+
+                        if (buttons)
+                            ptkx70tvwrite[6] = 1;
+                        else
+                            ptkx70tvwrite[6] = 0;
+
+                        if (((buffer2[7] & 0x04) > 0) && motionsync) 
+                            ptkx70tvwrite[7] = 1;
+                        else
+                            ptkx70tvwrite[7] = 0;
+
+                        if (((buffer2[7] & 0x08) > 0) && persistence)
+                            ptkx70tvwrite[8] = 1;
+                        else 
+                            ptkx70tvwrite[8] = 0;
+
+                    _stream.SetFeature(ptkx70tvwrite);
+
+                    }
+                }
             }
         }
 
         public void SetTargetBytes() {
             if (tabletVendorID == 1386) {
                 if (tabletProductID == 1013 || tabletProductID == 1015 || tabletProductID == 1017) {
-                    FeatureAddress1 = 102;
-                    FeatureAddress2 = 96;
                     tabletType = 1;
                 }
             }
