@@ -7,6 +7,9 @@
   <ItemGroup>
     <PackageReference Include="OpenTabletDriver.Plugin" Version="0.6.7" />
     <PackageReference Include="OpenTabletDriver" Version="0.6.7" />
+    <PackageReference Include="LibUsbDotNet" Version="2.2.75" />
   </ItemGroup>
+
+  
   
 </Project>
