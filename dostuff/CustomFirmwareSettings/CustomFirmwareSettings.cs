@@ -35,7 +35,7 @@ namespace CustomFirmwareSettings
         )]
         public int freq
         {
-            set => _freq = Math.Clamp(value, 100, 1500);
+            set => _freq = Math.Clamp(value, 100, 1000);
             get => _freq;
         }
         public int _freq;
@@ -115,27 +115,26 @@ namespace CustomFirmwareSettings
             if (tabletType == 1) {
                 _stream = FeatureReportAccess.Open(tabletVendorID, tabletProductID, 102);
             }
+            if (tabletType == 2) {
+                _stream = FeatureReportAccess.Open(tabletVendorID, tabletProductID, 33);
+            }
             return _stream;
         }
 
         private void ApplySettings() {
             if (tabletType == 1) {
-                if (_stream.GetFeature(102, length: 5, out var buffer1)) { 
+                if (_stream.GetFeature(102, length: 5, out var ptkx70read1)) { 
                     if (filtering) {
-                        buffer1[1] = 0xf8;
+                        ptkx70read1[1] = 0xf8;
                     }
                     else {
-                        buffer1[1] = 0xf0;
+                        ptkx70read1[1] = 0xf0;
                     }
-                    _stream.SetFeature(buffer1);
+                    _stream.SetFeature(ptkx70read1);
                 }
                 
-                if (_stream.GetFeature(96, length: 64, out var buffer2)) {
-                    if (buffer2[1] == 84 && buffer2[2] == 86) {
-                        if (buffer2[63] != 66) {
-                            Console.WriteLine("!!");
-                        }
-
+                if (_stream.GetFeature(96, length: 64, out var ptkx70read2)) {
+                    if (ptkx70read2[1] == 84 && ptkx70read2[2] == 86) {
                         byte[] ptkx70tvwrite = new byte[64];
                         ptkx70tvwrite[0] = 96;
                         ptkx70tvwrite[1] = 84;
@@ -149,12 +148,12 @@ namespace CustomFirmwareSettings
                         else
                             ptkx70tvwrite[6] = 0;
 
-                        if (((buffer2[7] & 0x04) > 0) && motionsync) 
+                        if (((ptkx70read2[7] & 0x04) > 0) && motionsync) 
                             ptkx70tvwrite[7] = 1;
                         else
                             ptkx70tvwrite[7] = 0;
 
-                        if (((buffer2[7] & 0x08) > 0) && persistence)
+                        if (((ptkx70read2[7] & 0x08) > 0) && persistence)
                             ptkx70tvwrite[8] = 1;
                         else 
                             ptkx70tvwrite[8] = 0;
@@ -164,12 +163,45 @@ namespace CustomFirmwareSettings
                     }
                 }
             }
+
+            if (tabletType == 2) {
+                if (_stream.GetFeature(33, length: 1, out var ctlx72x80read1)) {
+                    Console.WriteLine(ctlx72x80read1[0]);
+                }
+
+                if (_stream.GetFeature(36, length: 32, out var ctlx72x80read2)) {
+                    if (ctlx72x80read2[1] == 84 && ctlx72x80read2[2] == 86) {
+                        byte[] ctlx72x80tvwrite = new byte[32];
+                        ctlx72x80tvwrite[0] = 36;
+                        ctlx72x80tvwrite[1] = 84;
+                        ctlx72x80tvwrite[2] = 86;
+                        ctlx72x80tvwrite[3] = 1;
+                        ctlx72x80tvwrite[4] = (byte)((freq) & 0xff);
+                        ctlx72x80tvwrite[5] = (byte)((freq >> 8) & 0xff);
+
+                        if (buttons)
+                            ctlx72x80tvwrite[6] = 1;
+                        else
+                            ctlx72x80tvwrite[6] = 0;
+
+                        if (((ctlx72x80read2[7] & 0x04) > 0) && motionsync) 
+                            ctlx72x80tvwrite[7] = 1;
+                        else
+                            ctlx72x80tvwrite[7] = 0;
+
+                    _stream.SetFeature(ctlx72x80tvwrite);
+                    }
+                }
+            }
         }
 
         public void SetTargetBytes() {
             if (tabletVendorID == 1386) {
                 if (tabletProductID == 1013 || tabletProductID == 1015 || tabletProductID == 1017) {
                     tabletType = 1;
+                }
+                if (tabletProductID == 782 || tabletProductID == 803 || tabletProductID == 890 || tabletProductID == 891) {
+                    tabletType = 2;
                 }
             }
         }
