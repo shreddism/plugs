@@ -100,6 +100,9 @@ namespace CustomFirmwareSettings
                     continue;
                 }
 
+                    Console.WriteLine($"path={dev.DevicePath} features=[{string.Join(",", featureIds)}]");
+
+
                 if (!featureIds.Contains(requiredReportId))
                     continue;
 
@@ -128,6 +131,9 @@ namespace CustomFirmwareSettings
                 {
                     continue;
                 }
+
+                    Console.WriteLine($"path={dev.DevicePath} features=[{string.Join(",", featureIds)}]");
+
 
                 if (!featureIds.Contains(requiredReportId))
                     continue;
