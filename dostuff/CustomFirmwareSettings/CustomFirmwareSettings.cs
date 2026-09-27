@@ -118,6 +118,9 @@ namespace CustomFirmwareSettings
             if (tabletType == 2) {
                 _stream = FeatureReportAccess.Open(tabletVendorID, tabletProductID, 33);
             }
+            if (tabletType == 3) {
+                _stream = FeatureReportAccess.Open(tabletVendorID, tabletProductID, 102);
+            }
             return _stream;
         }
 
@@ -193,6 +196,48 @@ namespace CustomFirmwareSettings
                     }
                 }
             }
+
+            if (tabletType == 3) {
+                if (_stream.GetFeature(102, length: 5, out var ctlx100read1)) { 
+                    if (filtering) {
+                        ctlx100read1[1] = 0xf8;
+                    }
+                    else {
+                        ctlx100read1[1] = 0xf0;
+                    }
+                    _stream.SetFeature(ctlx100read1);
+                }
+                
+                if (_stream.GetFeature(96, length: 64, out var ctlx100read2)) {
+                    if (ctlx100read2[1] == 84 && ctlx100read2[2] == 86) {
+                        byte[] ctlx100tvwrite = new byte[64];
+                        ctlx100tvwrite[0] = 96;
+                        ctlx100tvwrite[3] = 84;
+                        ctlx100tvwrite[4] = 86;
+                        ctlx100tvwrite[5] = 1;
+                        ctlx100tvwrite[6] = (byte)((freq) & 0xff);
+                        ctlx100tvwrite[7] = (byte)((freq >> 8) & 0xff);
+
+                        if (buttons)
+                            ctlx100tvwrite[8] = 1;
+                        else
+                            ctlx100tvwrite[8] = 0;
+
+                        if (((ctlx100read2[6] & 0x04) > 0) && motionsync) 
+                            ctlx100tvwrite[9] = 1;
+                        else
+                            ctlx100tvwrite[9] = 0;
+
+                        if (((ctlx100read2[7] & 0x08) > 0) && persistence)
+                            ctlx100tvwrite[10] = 1;
+                        else 
+                            ctlx100tvwrite[10] = 0;
+
+                    _stream.SetFeature(ctlx100tvwrite);
+
+                    }
+                }
+            }
         }
 
         public void SetTargetBytes() {
@@ -202,6 +247,9 @@ namespace CustomFirmwareSettings
                 }
                 if (tabletProductID == 782 || tabletProductID == 803 || tabletProductID == 890 || tabletProductID == 891) {
                     tabletType = 2;
+                }
+                if (tabletProductID == 884 || tabletProductID == 886) {
+                    tabletType = 3;
                 }
             }
         }
