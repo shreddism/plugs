@@ -61,11 +61,14 @@ namespace CustomFirmwareSettings
         /// </param>
         public static FeatureReportAccess Open(int vendorId, int productId, byte requiredReportId)
         {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                return OpenWindows(vendorId, productId);
+            if (!(vendorId == 1386 && (productId == 884 || productId == 886))) {
 
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                return OpenLinux(vendorId, productId, requiredReportId);
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                    return OpenWindows(vendorId, productId);
+
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                    return OpenLinux(vendorId, productId, requiredReportId);
+            }
 
             return OpenHidSharp(vendorId, productId, requiredReportId);
         }
