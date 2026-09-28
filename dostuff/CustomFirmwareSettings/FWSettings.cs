@@ -51,7 +51,6 @@ namespace CustomFirmwareSettings {
                 }
                 if (tabletProductID == 782 || tabletProductID == 803 || tabletProductID == 890 || tabletProductID == 891) {
                     tabletType = 2;
-                    Console.WriteLine("tablet type 2");
                 }
                 if (tabletProductID == 884 || tabletProductID == 886) {
                     tabletType = 3;
@@ -65,12 +64,6 @@ namespace CustomFirmwareSettings {
             }
             if (tabletType == 2) {
                 reportStream = FeatureReportAccess.Open(tabletVendorID, tabletProductID, 33);
-                if (reportStream == null) {
-                    Console.WriteLine("report stream null");
-                }
-                else {
-                    Console.WriteLine("report stream opened successfully");
-                }
             }
             if (tabletType == 3) {
                 reportStream = FeatureReportAccess.Open(tabletVendorID, tabletProductID, 102);
@@ -175,17 +168,11 @@ namespace CustomFirmwareSettings {
                         ctlx72x80read1[0] = (byte)(ctlx72x80read1[0] ^ 0x01);
                     }
 
-                    Console.WriteLine("read1 success");
-
                     reportStream.SetFeature(ctlx72x80read1);
-                }
-                else {
-                    Console.WriteLine("read1 failure (expected, is fine)");
                 }
 
                 if (reportStream.GetFeature(36, length: 32, out var ctlx72x80read2)) {
                     if (ctlx72x80read2[1] == 84 && ctlx72x80read2[2] == 86) {
-                        Console.WriteLine("read2 success");
                         byte[] ctlx72x80tvwrite = new byte[32];
                         ctlx72x80tvwrite[0] = 36;
                         ctlx72x80tvwrite[1] = 84;
@@ -206,12 +193,6 @@ namespace CustomFirmwareSettings {
 
                         reportStream.SetFeature(ctlx72x80tvwrite);
                     }
-                    else {
-                        Console.WriteLine("read2 weird failure");
-                    }
-                }
-                else {
-                    Console.WriteLine("read2 failure");
                 }
             }
 
