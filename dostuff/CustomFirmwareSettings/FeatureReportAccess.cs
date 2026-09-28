@@ -100,7 +100,7 @@ namespace CustomFirmwareSettings
                     continue;
                 }
 
-                    Console.WriteLine($"path={dev.DevicePath} features=[{string.Join(",", featureIds)}]");
+                   // Console.WriteLine($"path={dev.DevicePath} features=[{string.Join(",", featureIds)}]");
 
 
                 if (!featureIds.Contains(requiredReportId))
@@ -132,7 +132,7 @@ namespace CustomFirmwareSettings
                     continue;
                 }
 
-                    Console.WriteLine($"path={dev.DevicePath} features=[{string.Join(",", featureIds)}]");
+                 //   Console.WriteLine($"path={dev.DevicePath} features=[{string.Join(",", featureIds)}]");
 
 
                 if (!featureIds.Contains(requiredReportId))
@@ -160,7 +160,7 @@ namespace CustomFirmwareSettings
                         : GetFeatureViaHidSharp(reportId, length);
                 return true;
             }
-            catch (Exception ex)
+            catch
             {
                 buffer = null;
                 return false;
@@ -187,7 +187,7 @@ namespace CustomFirmwareSettings
                     _hidSharpStream!.SetFeature(data);
                 return true;
             }
-            catch (Exception ex)
+            catch
             {
                 return false;
             }

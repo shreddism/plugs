@@ -33,20 +33,20 @@ namespace CustomFirmwareSettings
         (
             "Possible range: 133 - 1000, default 1000"
         )]
-        public int freq
+        public uint frequency
         {
-            set => _freq = Math.Clamp(value, 100, 1000);
-            get => _freq;
+            set => _frequency = Math.Clamp(value, 100, 1000);
+            get => _frequency;
         }
-        public int _freq;
+        public uint _frequency;
 
-        [BooleanProperty("Pen Clicks/Buttons", ""), DefaultPropertyValue(false), ToolTip
+        [BooleanProperty("Pen Clicks/Buttons", ""), DefaultPropertyValue(true), ToolTip
         (
             "f"
         )]
-        public bool buttons { set; get; }
+        public bool penbuttons { set; get; }
 
-        [BooleanProperty("motionsync", ""), DefaultPropertyValue(false), ToolTip
+        [BooleanProperty("motionsync", ""), DefaultPropertyValue(true), ToolTip
         (
             "m"
         )]
@@ -62,13 +62,9 @@ namespace CustomFirmwareSettings
 
         public event Action<IDeviceReport> Emit;
 
-        private FeatureReportAccess? _stream;
+        public SettingsApplier settings;
 
         public void Consume(IDeviceReport value) => Emit?.Invoke(value);
-        
-        int tabletVendorID;
-        int tabletProductID;
-        int tabletType;
 
         [OnDependencyLoad]
         public void initialize() {
@@ -78,19 +74,30 @@ namespace CustomFirmwareSettings
                 if (device is InputDevice inputDevice) {
                     var id = inputDevice.Identifier;
 
-                    tabletVendorID = id.VendorID;
-                    tabletProductID = id.ProductID;
+                    settings = new SettingsApplier(id.VendorID, id.ProductID);
 
-                    SetTargetBytes();
+                    if (settings.tabletType == 0) {
+                        Log.Write("cfw", "unsupported tablet", LogLevel.Error);
+                        init = true;
+                        return;
+                    }
+
+                    settings.write = new FWSettings(
+                        filtering,
+                        frequency,
+                        penbuttons,
+                        motionsync,
+                        persistence
+                    );
 
                     if (!init) {
                         try
                         {
-                            _stream = OpenConfigInterface();
-                            if (_stream is null)
+                            settings.OpenConfigInterface();
+                            if (settings.reportStream is null)
                                 return;
 
-                            ApplySettings();
+                            settings.Apply();
 
                             init = true;
 
@@ -98,7 +105,7 @@ namespace CustomFirmwareSettings
                         }
                         catch (Exception ex)
                         {
-                            Log.Write("PTK470", $"initialize failed: {ex}", LogLevel.Error);
+                            Log.Write("cfw", $"initialize failed: {ex}", LogLevel.Error);
                             init = true;
 
                             return;
@@ -110,156 +117,105 @@ namespace CustomFirmwareSettings
 
         bool init;
 
-        private FeatureReportAccess? OpenConfigInterface()
-        {
-            if (tabletType == 1) {
-                _stream = FeatureReportAccess.Open(tabletVendorID, tabletProductID, 102);
-            }
-            if (tabletType == 2) {
-                _stream = FeatureReportAccess.Open(tabletVendorID, tabletProductID, 33);
-            }
-            if (tabletType == 3) {
-                _stream = FeatureReportAccess.Open(tabletVendorID, tabletProductID, 102);
-            }
-            return _stream;
+        public void Dispose() {
+            settings.reportStream?.Dispose();
+            settings.reportStream = null;
         }
 
-        private void ApplySettings() {
-            if (tabletType == 1) {
-                if (_stream.GetFeature(102, length: 5, out var ptkx70read1)) { 
-                    if (filtering) {
-                        ptkx70read1[1] = 0xf8;
+        [TabletReference]
+        public TabletReference Tablet { get; set; }
+
+        [Resolved]
+        public IDriver drv { get; set; }
+    }
+
+    [PluginName("Custom Firmware Settings Binding")]
+    public class CustomFirmwareBinding : IStateBinding 
+    {
+        [Property("Action"), DefaultPropertyValue("Toggle Pen Buttons"), PropertyValidated(nameof(actionModes)), ToolTip
+        (
+            "Changes what pressing and holding the binding will do."
+        )]
+        public string Action { get; set; } = string.Empty;
+
+        public static IEnumerable<string> actionModes { get; set; } = new List<string> { "Toggle Pen Buttons" };
+
+        public int actionMode;
+
+        [OnDependencyLoad]
+        public void initialize() {
+            actionMode = Action switch {
+                "Toggle Pen Buttons" => 1,
+                _ => 0
+            };
+
+            if (drv is Driver driver) {
+                var tablet = driver.InputDevices.Where(dev => dev.Properties == Tablet.Properties).FirstOrDefault();
+                var device = tablet?.InputDevices.Where(dev => dev.Configuration == Tablet.Properties).FirstOrDefault();
+                if (device is InputDevice inputDevice) {
+                    var id = inputDevice.Identifier;
+
+                    settings = new SettingsApplier(id.VendorID, id.ProductID);
+
+                    if (settings.tabletType == 0) {
+                        Log.Write("cfw", "unsupported tablet", LogLevel.Error);
+                        return;
+                    }
+
+                    if (!init) {
+                        try
+                        {
+                            settings.OpenConfigInterface();
+                            if (settings.reportStream is null)
+                                return;
+
+                            init = true;
+
+                            return;
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Write("cfw", $"initialize failed: {ex}", LogLevel.Error);
+
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
+        public void Press(TabletReference tablet, IDeviceReport report) {
+            if (init) {
+                settings.Read(true);
+                if (actionMode == 1) {
+                    settings.write.Persistence = false;
+                    settings.write.PenButtons = !settings.write.PenButtons;
+                    settings.Apply();
+                    settings.Read(false);
+                    if (settings.read.PenButtons != settings.write.PenButtons) {
+                        Log.Write("cfw", "Failed toggle.", LogLevel.Error);
                     }
                     else {
-                        ptkx70read1[1] = 0xf0;
-                    }
-                    _stream.SetFeature(ptkx70read1);
-                }
-                
-                if (_stream.GetFeature(96, length: 64, out var ptkx70read2)) {
-                    if (ptkx70read2[1] == 84 && ptkx70read2[2] == 86) {
-                        byte[] ptkx70tvwrite = new byte[64];
-                        ptkx70tvwrite[0] = 96;
-                        ptkx70tvwrite[1] = 84;
-                        ptkx70tvwrite[2] = 86;
-                        ptkx70tvwrite[3] = 1;
-                        ptkx70tvwrite[4] = (byte)((freq) & 0xff);
-                        ptkx70tvwrite[5] = (byte)((freq >> 8) & 0xff);
-
-                        if (buttons)
-                            ptkx70tvwrite[6] = 1;
-                        else
-                            ptkx70tvwrite[6] = 0;
-
-                        if (((ptkx70read2[7] & 0x04) > 0) && motionsync) 
-                            ptkx70tvwrite[7] = 1;
-                        else
-                            ptkx70tvwrite[7] = 0;
-
-                        if (((ptkx70read2[7] & 0x08) > 0) && persistence)
-                            ptkx70tvwrite[8] = 1;
-                        else 
-                            ptkx70tvwrite[8] = 0;
-
-                    _stream.SetFeature(ptkx70tvwrite);
-
-                    }
-                }
-            }
-
-            if (tabletType == 2) {
-                if (_stream.GetFeature(33, length: 1, out var ctlx72x80read1)) {
-                    Console.WriteLine(ctlx72x80read1[0]);
-                }
-
-                if (_stream.GetFeature(36, length: 32, out var ctlx72x80read2)) {
-                    if (ctlx72x80read2[1] == 84 && ctlx72x80read2[2] == 86) {
-                        byte[] ctlx72x80tvwrite = new byte[32];
-                        ctlx72x80tvwrite[0] = 36;
-                        ctlx72x80tvwrite[1] = 84;
-                        ctlx72x80tvwrite[2] = 86;
-                        ctlx72x80tvwrite[3] = 1;
-                        ctlx72x80tvwrite[4] = (byte)((freq) & 0xff);
-                        ctlx72x80tvwrite[5] = (byte)((freq >> 8) & 0xff);
-
-                        if (buttons)
-                            ctlx72x80tvwrite[6] = 1;
-                        else
-                            ctlx72x80tvwrite[6] = 0;
-
-                        if (((ctlx72x80read2[7] & 0x04) > 0) && motionsync) 
-                            ctlx72x80tvwrite[7] = 1;
-                        else
-                            ctlx72x80tvwrite[7] = 0;
-
-                    _stream.SetFeature(ctlx72x80tvwrite);
-                    }
-                }
-            }
-
-            if (tabletType == 3) {
-                if (_stream.GetFeature(102, length: 5, out var ctlx100read1)) { 
-                    if (filtering) {
-                        ctlx100read1[1] = 0xf8;
-                    }
-                    else {
-                        ctlx100read1[1] = 0xf0;
-                    }
-                    _stream.SetFeature(ctlx100read1);
-                }
-                
-                if (_stream.GetFeature(96, length: 64, out var ctlx100read2)) {
-                    if (ctlx100read2[1] == 84 && ctlx100read2[2] == 86) {
-                        byte[] ctlx100tvwrite = new byte[64];
-                        ctlx100tvwrite[0] = 96;
-                        ctlx100tvwrite[3] = 84;
-                        ctlx100tvwrite[4] = 86;
-                        ctlx100tvwrite[5] = 1;
-                        ctlx100tvwrite[6] = (byte)((freq) & 0xff);
-                        ctlx100tvwrite[7] = (byte)((freq >> 8) & 0xff);
-
-                        if (buttons)
-                            ctlx100tvwrite[8] = 1;
-                        else
-                            ctlx100tvwrite[8] = 0;
-
-                        if (((ctlx100read2[6] & 0x04) > 0) && motionsync) 
-                            ctlx100tvwrite[9] = 1;
-                        else
-                            ctlx100tvwrite[9] = 0;
-
-                        if (((ctlx100read2[7] & 0x08) > 0) && persistence)
-                            ctlx100tvwrite[10] = 1;
-                        else 
-                            ctlx100tvwrite[10] = 0;
-
-                    _stream.SetFeature(ctlx100tvwrite);
-
+                        if (settings.read.PenButtons) {
+                            Log.Write("cfw", "Enabled pen buttons.", LogLevel.Info);
+                        }
+                        else {
+                            Log.Write("cfw", "Disabled pen buttons.", LogLevel.Info);
+                        }
                     }
                 }
             }
         }
 
-        public void SetTargetBytes() {
-            if (tabletVendorID == 1386) {
-                if (tabletProductID == 1013 || tabletProductID == 1015 || tabletProductID == 1017) {
-                    tabletType = 1;
-                }
-                if (tabletProductID == 782 || tabletProductID == 803 || tabletProductID == 890 || tabletProductID == 891) {
-                    tabletType = 2;
-                }
-                if (tabletProductID == 884 || tabletProductID == 886) {
-                    tabletType = 3;
-                }
+        public void Release(TabletReference tablet, IDeviceReport report) {
+            if (init) {
+                return;
             }
         }
 
-        public void Dispose()
-        {
-            _stream?.Dispose();
-            _stream = null;
-        }
+        bool init;
 
+        public SettingsApplier settings;
 
         [TabletReference]
         public TabletReference Tablet { get; set; }
