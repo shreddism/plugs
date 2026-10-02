@@ -18,12 +18,12 @@ namespace CustomFirmwareSettings {
     public struct FWSettings 
     {
         public bool Filtering;
-        public uint Frequency;
+        public int Frequency;
         public bool PenButtons;
         public bool MotionSync;
         public bool Persistence;
 
-        public FWSettings(bool filtering, uint frequency, bool penbuttons, bool motionsync, bool persistence) {
+        public FWSettings(bool filtering, int frequency, bool penbuttons, bool motionsync, bool persistence) {
             Filtering = filtering;
             Frequency = frequency;
             PenButtons = penbuttons;
@@ -39,6 +39,13 @@ namespace CustomFirmwareSettings {
         int tabletVendorID;
         int tabletProductID;
         public FeatureReportAccess? reportStream;
+
+        public bool stockReportPresent;
+        public bool modReportPresent;
+
+        bool reportStateLogged;
+
+        public int writemask = 0;
 
         public FWSettings read, write;
 
@@ -73,55 +80,71 @@ namespace CustomFirmwareSettings {
         public void Read(bool copy) {
             if (tabletType == 1) {
                 if (reportStream.GetFeature(102, length: 5, out var ptkx70read1)) { 
+                    stockReportPresent = true;
                     read.Filtering = (ptkx70read1[1] == 0xf8);
+                    writemask = writemask | 0x01;
                 }
 
                 if (reportStream.GetFeature(96, length: 64, out var ptkx70read2)) {
                     if (ptkx70read2[1] == 84 && ptkx70read2[2] == 86) {
-                        read.Frequency = ((uint)ptkx70read2[4] | ((uint)(ptkx70read2[5]) << 8));
+                        modReportPresent = true;
+                        read.Frequency = ((int)ptkx70read2[4] | ((int)(ptkx70read2[5]) << 8));
                         read.PenButtons = (ptkx70read2[6] > 0);
                         read.MotionSync = (((ptkx70read2[7] & 0x04) > 0) && (ptkx70read2[8] > 0));
                         read.Persistence = ((ptkx70read2[7] & 0x10) > 0);
+                        writemask = writemask | 0x1e;
                     }
                 }
             }
             if (tabletType == 2) {
                 if (reportStream.GetFeature(33, length: 1, out var ctlx72x80read1)) {
+                    stockReportPresent = true;
                     read.Filtering = ((ctlx72x80read1[0] & 0x01) == 0);
+                    writemask = writemask | 0x01;
                 }
                 else read.Filtering = false;
 
                 if (reportStream.GetFeature(36, length: 32, out var ctlx72x80read2)) {
                     if (ctlx72x80read2[1] == 84 && ctlx72x80read2[2] == 86) {
-                        read.Frequency = ((uint)ctlx72x80read2[4] | ((uint)(ctlx72x80read2[5]) << 8));
+                        modReportPresent = true;
+                        read.Frequency = ((int)ctlx72x80read2[4] | ((int)(ctlx72x80read2[5]) << 8));
                         read.PenButtons = (ctlx72x80read2[6] > 0);
                         read.MotionSync = (((ctlx72x80read2[7] & 0x04) > 0) && (ctlx72x80read2[8] > 0));
                         read.Persistence = ((ctlx72x80read2[7] & 0x10) > 0);
+                        writemask = writemask | 0x1e;
                     }
                 }
             }
             if (tabletType == 3) {
                 if (reportStream.GetFeature(102, length: 5, out var ptkx70read1)) { 
+                    stockReportPresent = true;
                     read.Filtering = (ptkx70read1[1] == 0xf8);
+                    writemask = writemask | 0x01;
                 }
 
                 if (reportStream.GetFeature(96, length: 64, out var ptkx70read2)) {
                     if (ptkx70read2[1] == 84 && ptkx70read2[2] == 86) {
-                        read.Frequency = ((uint)ptkx70read2[4] | ((uint)(ptkx70read2[5]) << 8));
+                        modReportPresent = true;
+                        read.Frequency = ((int)ptkx70read2[4] | ((int)(ptkx70read2[5]) << 8));
                         read.PenButtons = (ptkx70read2[6] > 0);
                         read.MotionSync = (((ptkx70read2[7] & 0x04) > 0) && (ptkx70read2[8] > 0));
                         read.Persistence = ((ptkx70read2[7] & 0x10) > 0);
+                        writemask = writemask | 0x1e;
                     }
                 }
             }
             if (copy) {
                 write = read;
             }
+            if (!reportStateLogged) {
+                reportStateLogged = true;
+            }
         }
 
         public void Apply() {
             if (tabletType == 1) {
                 if (reportStream.GetFeature(102, length: 5, out var ptkx70read1)) { 
+                    stockReportPresent = true;
                     if (write.Filtering) {
                         ptkx70read1[1] = 0xf8;
                     }
@@ -133,6 +156,7 @@ namespace CustomFirmwareSettings {
                 
                 if (reportStream.GetFeature(96, length: 64, out var ptkx70read2)) {
                     if (ptkx70read2[1] == 84 && ptkx70read2[2] == 86) {
+                        modReportPresent = true;
                         byte[] ptkx70tvwrite = new byte[64];
                         ptkx70tvwrite[0] = 96;
                         ptkx70tvwrite[1] = 84;
@@ -163,6 +187,7 @@ namespace CustomFirmwareSettings {
 
             if (tabletType == 2) {
                 if (reportStream.GetFeature(33, length: 1, out var ctlx72x80read1)) {
+                    stockReportPresent = true;
                     if ((((ctlx72x80read1[0] & 0x01) == 0) && !write.Filtering) ||
                         (((ctlx72x80read1[0] & 0x01) != 0) && write.Filtering)) {
                         ctlx72x80read1[0] = (byte)(ctlx72x80read1[0] ^ 0x01);
@@ -172,6 +197,7 @@ namespace CustomFirmwareSettings {
                 }
 
                 if (reportStream.GetFeature(36, length: 32, out var ctlx72x80read2)) {
+                    modReportPresent = true;
                     if (ctlx72x80read2[1] == 84 && ctlx72x80read2[2] == 86) {
                         byte[] ctlx72x80tvwrite = new byte[32];
                         ctlx72x80tvwrite[0] = 36;
@@ -198,6 +224,7 @@ namespace CustomFirmwareSettings {
 
             if (tabletType == 3) {
                 if (reportStream.GetFeature(102, length: 5, out var ctlx100read1)) { 
+                    stockReportPresent = true;
                     if (write.Filtering) {
                         ctlx100read1[1] = 0xf8;
                     }
@@ -208,6 +235,7 @@ namespace CustomFirmwareSettings {
                 }
                 
                 if (reportStream.GetFeature(96, length: 64, out var ctlx100read2)) {
+                    modReportPresent = true;
                     if (ctlx100read2[1] == 84 && ctlx100read2[2] == 86) {
                         byte[] ctlx100tvwrite = new byte[64];
                         ctlx100tvwrite[0] = 96;
@@ -235,6 +263,10 @@ namespace CustomFirmwareSettings {
                         reportStream.SetFeature(ctlx100tvwrite);
                     }
                 }
+            }
+
+            if (!reportStateLogged) {
+                reportStateLogged = true;
             }
         }
     }

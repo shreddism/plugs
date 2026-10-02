@@ -23,39 +23,24 @@ namespace CustomFirmwareSettings
         {
         }
 
-        [BooleanProperty("Filtering", ""), DefaultPropertyValue(false), ToolTip
-        (
-            "filt"
-        )]
+        [BooleanProperty("Filtering", ""), DefaultPropertyValue(false)]
         public bool filtering { set; get; }
 
-        [Property("freq"), DefaultPropertyValue(1000), ToolTip
-        (
-            "Possible range: 133 - 1000, default 1000"
-        )]
-        public uint frequency
+        [Property("Frequency"), DefaultPropertyValue(1000)]
+        public int frequency
         {
-            set => _frequency = Math.Clamp(value, 100, 1000);
+            set => _frequency = Math.Clamp(value, 133, 1000);
             get => _frequency;
         }
-        public uint _frequency;
+        public int _frequency;
 
-        [BooleanProperty("Pen Clicks/Buttons", ""), DefaultPropertyValue(true), ToolTip
-        (
-            "f"
-        )]
+        [BooleanProperty("Pen Clicks/Buttons", ""), DefaultPropertyValue(true)]
         public bool penbuttons { set; get; }
 
-        [BooleanProperty("motionsync", ""), DefaultPropertyValue(true), ToolTip
-        (
-            "m"
-        )]
+        [BooleanProperty("Motion Sync", ""), DefaultPropertyValue(true)]
         public bool motionsync { set; get; }
 
-        [BooleanProperty("Persistence", ""), DefaultPropertyValue(false), ToolTip
-        (
-            "m"
-        )]
+        [BooleanProperty("Persistence", ""), DefaultPropertyValue(false)]
         public bool persistence { set; get; }
 
         public PipelinePosition Position => PipelinePosition.PreTransform;
@@ -138,7 +123,7 @@ namespace CustomFirmwareSettings
         )]
         public string Action { get; set; } = string.Empty;
 
-        public static IEnumerable<string> actionModes { get; set; } = new List<string> { "Toggle Pen Buttons" };
+        public static IEnumerable<string> actionModes { get; set; } = new List<string> { "Toggle Pen Buttons", "Toggle Filtering" };
 
         public int actionMode;
 
@@ -146,6 +131,7 @@ namespace CustomFirmwareSettings
         public void initialize() {
             actionMode = Action switch {
                 "Toggle Pen Buttons" => 1,
+                "Toggle Filtering" => 2,
                 _ => 0
             };
 
@@ -187,8 +173,12 @@ namespace CustomFirmwareSettings
         public void Press(TabletReference tablet, IDeviceReport report) {
             if (init) {
                 settings.Read(true);
+                settings.write.Persistence = false;
                 if (actionMode == 1) {
-                    settings.write.Persistence = false;
+                    if ((settings.writemask & 0x04) == 0) {
+                        Log.Write("cfw", "Cannot toggle pen buttons.", LogLevel.Info);
+                        return;
+                    }
                     settings.write.PenButtons = !settings.write.PenButtons;
                     settings.Apply();
                     settings.Read(false);
@@ -201,6 +191,28 @@ namespace CustomFirmwareSettings
                         }
                         else {
                             Log.Write("cfw", "Disabled pen buttons.", LogLevel.Info);
+                        }
+                    }
+                }
+                else if (actionMode == 2) {
+                    if ((settings.writemask & 0x01) == 0) {
+                        Log.Write("cfw", "Cannot toggle filtering.", LogLevel.Info);
+                        if (settings.modReportPresent) {
+                            Log.Write("cfw", "A modded firmware may have this force-disabled.", LogLevel.Info);
+                        }
+                    }
+                    settings.write.Filtering = !settings.write.Filtering;
+                    settings.Apply();
+                    settings.Read(false);
+                    if (settings.read.Filtering != settings.write.Filtering) {
+                        Log.Write("cfw", "Failed toggle.", LogLevel.Error);
+                    }
+                    else {
+                        if (settings.read.Filtering) {
+                            Log.Write("cfw", "Enabled firmware filtering.", LogLevel.Info);
+                        }
+                        else {
+                            Log.Write("cfw", "Disabled firmware filtering.", LogLevel.Info);
                         }
                     }
                 }
