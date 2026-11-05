@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>WacomFilters</AssemblyName>
+    <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
+    <NoWarn>$(NoWarn);CS8632</NoWarn>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+  <PropertyGroup>
+    <LangVersion>14.0</LangVersion>
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    <CheckForOverflowUnderflow>False</CheckForOverflowUnderflow>
+  </PropertyGroup>
+  <PropertyGroup />
+  <ItemGroup />
+  <ItemGroup>
+    <PackageReference Include="OpenTabletDriver" Version="0.6.7" />
+    <PackageReference Include="OpenTabletDriver.Plugin" Version="0.6.7" />
+  </ItemGroup>
+</Project>
