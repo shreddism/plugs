@@ -157,6 +157,8 @@ namespace CustomFirmwareSettings
 
                             init = true;
 
+                            Console.WriteLine("ok");
+
                             return;
                         }
                         catch (Exception ex)

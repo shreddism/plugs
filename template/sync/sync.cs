@@ -32,7 +32,6 @@ namespace sync
 
             if (value is ITabletReport report)
             {
-                Console.WriteLine("----");
             }
             Emit?.Invoke(value);
         }

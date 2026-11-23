@@ -49,16 +49,19 @@ namespace printtime
          //           delta[i] = delta[i - 1];
           //      }
          //           delta[0] = dt;
+                    current = report.Position;
 
                 if (ct > 50) {
-                   // total += dt;
-                   // tick += 1.0;
+                    total += dt;
+                    tick += 1.0;
                     
-                        Console.WriteLine(Math.Round(dt, 1, MidpointRounding.AwayFromZero));
-                    //    Console.WriteLine(report.Position);
-                      //  Console.WriteLine("------");
+                    Console.WriteLine(total / tick);
+                        //Console.WriteLine("------");
                     
                 }
+
+
+                last = report.Position;
               //  if (!init) {
               //  Initialize();
              //   init = true;
@@ -77,10 +80,13 @@ namespace printtime
    //     void Initialize() {
     //        reportMsAvg = testValue;
     //    }
-    //    double total;
-    //    double tick;
+        double total;
+        double tick;
 
         int ct;
+
+        Vector2 current, last;
+        uint press;
 
    //     float reportMsAvg;
     //    bool init = false;

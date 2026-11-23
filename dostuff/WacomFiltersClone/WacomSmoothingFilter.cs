@@ -10,6 +10,7 @@ using OpenTabletDriver.Plugin.DependencyInjection;
 using OpenTabletDriver.Plugin.Output;
 using OpenTabletDriver.Plugin.Tablet;
 using OpenTabletDriver.Plugin.Timing;
+using WacomFiltersPlus.Core;
 
 namespace WacomFiltersPlus;
 
@@ -19,58 +20,75 @@ public class Mean : IPositionedPipelineElement<IDeviceReport>
     public PipelinePosition Position => PipelinePosition.PreTransform;
     public event Action<IDeviceReport>? Emit;
 
-    [Property("Base Depth"), DefaultPropertyValue(4)]
-    public int baseDepth { get; set; } = 4;
+    [Property("Base Depth"), DefaultPropertyValue(4.0)]
+    public double baseDepth { get; set; } = 4.0;
 
-    [Property("Jitter Minimum"), DefaultPropertyValue(3.0)]
-    public double jitterMinimum { get; set; } = 3.0;
+	[Property("Time Window"), DefaultPropertyValue(0.12781954887218044)]
+    public double keepSeconds { get; set; } = 0.12781954887218044;
+	
+	[Property("Reference Rate"), DefaultPropertyValue(133.0)]
+    public double referenceRate { get; set; } = 133.0;
 
-    [Property("Jitter Maximum"), DefaultPropertyValue(12.0)]
-    public double jitterMaximum { get; set; } = 12.0;
+	[Property("Time Step"), DefaultPropertyValue(1.0)]
+    public double timeStep { get; set; } = 1.0;
     
     private AdaptiveMeanAxis axisX;
     private AdaptiveMeanAxis axisY;
+	private double clock;
 
     public void Consume(IDeviceReport value) {
-        if (report is ITabletReport report) {
-            PenSample sample = new PenSample((double)report.Position.X, (double)report.Position.Y, report.Pressure);
-
+        if (value is ITabletReport report) {
+			double reportTime = reportStopwatch.Restart().TotalSeconds;
+			if (reportTime > keepSeconds) {
+				history.Clear();
+				clock = reportTime;
+			}
+            PenSample sample = new PenSample((double)stopwatch.Elapsed.TotalSeconds, (double)report.Position.X, (double)report.Position.Y, (int)report.Pressure, 0, false, false, new byte[4]);
+			history.Add(sample);
+			double X = (double)report.Position.X;
+			double Y = (double)report.Position.Y;
+			if (reportTime < 1.0 / referenceRate) {
+				clock += timeStep * (1.0 / referenceRate);
+			}
+			else {
+				clock = timeStep * (double)stopwatch.Elapsed.TotalSeconds;
+			}
+			float FX = (float)axisX.Update(history, SampleField.X, 0, clock);
+			float FY = (float)axisX.Update(history, SampleField.Y, 0, clock);
+			Vector2 save = report.Position;
+            report.Position = new Vector2(FX, FY);
         }
+		Emit.Invoke(value);
     }
 
-    SampleHistory history = new SampleHistory();
+    SampleHistory history;
 
     [OnDependencyLoad] 
     public void Initialize() {
-        axisX = new AdaptiveMeanAxis(baseDepth, jitterMinimum, jitterMaximum);
-        axisY = new AdaptiveMeanAxis(baseDepth, jitterMinimum, jitterMaximum);
+		history = new SampleHistory(keepSeconds, referenceRate);
+        axisX = new AdaptiveMeanAxis(baseDepth);
+        axisY = new AdaptiveMeanAxis(baseDepth);
     }
 
     private HPETDeltaStopwatch stopwatch = new HPETDeltaStopwatch();
+    private HPETDeltaStopwatch reportStopwatch = new HPETDeltaStopwatch();
 }
 
 internal sealed class AdaptiveMeanAxis
 {
-
-    public AdaptiveMeanAxis(int baseDepth, double jitterMinimum, double jitterMaximum) {
+    public AdaptiveMeanAxis(double baseDepth) {
         BaseDepth = baseDepth;
-        JitterMinimum = jitterMinimum;
-        JitterMaximum = jitterMaximum;
     }
 
-	private int BaseDepth;
-
-    private double jitterMinimum, jitterMaximum;
-
+	private double BaseDepth;
 	private double _depth;
 
-	public int Update(SampleHistory history, SampleField field, byte normalizedHeight, double now, double step)
+	public double Update(SampleHistory history, SampleField field, byte normalizedHeight, double now)
 	{
 		int num = history.TapCount(now);
 		double delta = ((num < 3) ? 0.0 : (history.Tap(now, 2, field) - history.Tap(now, 1, field)));
-		_depth = Math.Max(1.0, Slew(_depth, Target(normalizedHeight, delta), step));
-		int num2 = (int)_depth;
-		double num3 = _depth - (double)num2;
+		int num2 = (int)BaseDepth;
+		double num3 = BaseDepth - (double)num2;
 		double num4 = 0.0;
 		for (int i = 0; i < num2; i++)
 		{
@@ -80,37 +98,6 @@ internal sealed class AdaptiveMeanAxis
 		{
 			num4 += num3 * history.Tap(now, num2, field);
 		}
-		return (num4 / _depth);
-	}
-
-	public void Reset()
-	{
-		_depth = 0.0;
-	}
-
-	private static int Target(byte height, double delta)
-	{
-		double num = height * (jitterMaximum - jitterMinimum) / 255.0 + jitterMinimum;
-		double num2 = 2.0 * num;
-		if (delta * delta > num2 * num2)
-		{
-			return 4;
-		}
-		double num3 = height * 3.0 / 255.0 + 1.0;
-		return (4.0 * num3);
-	}
-
-	private static double Slew(double depth, double target, double step)
-	{
-		double num = target - depth;
-		if (num > 0.0)
-		{
-			return Math.Min(target, depth + ((num >= 5.0) ? 2.0 : 1.0) * step);
-		}
-		if (num < 0.0)
-		{
-			return Math.Max(target, depth - step);
-		}
-		return depth;
+		return (num4 / BaseDepth);
 	}
 }

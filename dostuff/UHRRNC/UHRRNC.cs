@@ -7,7 +7,7 @@ using OpenTabletDriver.Plugin.Timing;
 
 namespace Saturn
 {
-    [PluginName("Saturn - Noise Compensation Test")]
+   /* [PluginName("Saturn - Noise Compensation Test")]
     public class NCT : IPositionedPipelineElement<IDeviceReport>
     {
         public NCT() : base()
@@ -305,7 +305,7 @@ namespace Saturn
 
         public int adjustmentType = 0;
 
-    }
+    }*/
 
     [PluginName("Noise Machine")]
     public class noisemachine : IPositionedPipelineElement<IDeviceReport>

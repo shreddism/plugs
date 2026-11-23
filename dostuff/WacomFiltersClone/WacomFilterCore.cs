@@ -1,38 +1,46 @@
 using System;
 using System.Numerics;
+using System.Collections.Generic;
 
 namespace WacomFiltersPlus.Core;
 
 internal sealed class SampleHistory
 {
-	private const double KeepSeconds = 0.12781954887218044;
+	public double KeepSeconds;
+	public double ReferenceRate = 133.0;
+
+	public SampleHistory(double window, double period) {
+		KeepSeconds = window;
+		ReferenceRate = period;
+	}
 
 	private const double MachineEpsilon = 2.220446049250313E-16;
 
-	private readonly List<PenSample> _samples = new List<PenSample>();
+	public List<PenSample> _samples = new List<PenSample>();
 
 	public void Add(PenSample sample)
 	{
-		double num = sample.TimeSeconds - 0.12781954887218044;
-		int i;
-		for (i = 0; i + 1 < _samples.Count && _samples[i + 1].TimeSeconds <= num; i++)
-		{
-		}
-		_samples.RemoveRange(0, i);
-		_samples.Add(sample);
+		double cutoff = sample.TimeSeconds - KeepSeconds;
+        
+        int drop = 0;
+        while (drop + 1 < _samples.Count && _samples[drop + 1].TimeSeconds <= cutoff)
+            drop++;
+
+        _samples.RemoveRange(0, drop);
+        _samples.Add(sample);
 	}
 
 	public int TapCount(double now)
 	{
 		double timeSeconds = _samples[0].TimeSeconds;
-		double num = (now - timeSeconds) / (1.0 / 133.0);
-		double num2 = Tolerance(Math.Max(Math.Abs(now), Math.Abs(timeSeconds)), 1.0 / 133.0);
+		double num = (now - timeSeconds) / (1.0 / ReferenceRate);
+		double num2 = Tolerance(Math.Max(Math.Abs(now), Math.Abs(timeSeconds)), 1.0 / ReferenceRate);
 		return 1 + (int)Math.Min(num + num2, 2147483646.0);
 	}
 
 	public double Tap(double now, int lag, SampleField field)
 	{
-		double num = now - (double)lag * (1.0 / 133.0);
+		double num = now - (double)lag * (1.0 / ReferenceRate);
 		if (num <= _samples[0].TimeSeconds)
 		{
 			return Value(_samples[0], field);
@@ -84,7 +92,7 @@ internal sealed class SampleHistory
 		return Math.Min(1E-06, 1.7763568394002505E-15 * (scale / interval));
 	}
 
-	private static double Value(PenSample sample, SampleField field)
+	public static double Value(PenSample sample, SampleField field)
 	{
 		return field switch
 		{
@@ -115,7 +123,7 @@ internal enum SampleField
 
 internal readonly record struct PressureResult(int Pressure, bool TipDown);
 
-internal readonly record struct PenSample(double X, double Y, int Pressure, byte RawHeight, bool HasHeight, bool Eraser, byte[] PenButtons);
+internal readonly record struct PenSample(double TimeSeconds, double X, double Y, int Pressure, int RawHeight, bool HasHeight, bool Eraser, byte[] PenButtons);
 internal readonly record struct FilteredSample(double X, double Y, int Pressure, bool TipDown, byte[] PenButtons);
 
 internal sealed class HeightCalibration

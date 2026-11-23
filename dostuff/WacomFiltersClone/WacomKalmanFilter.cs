@@ -27,6 +27,9 @@ public class Probabilistic : IPositionedPipelineElement<IDeviceReport>
 
     [Property("Acceleration"), DefaultPropertyValue(0.005)]
     public double acceleration { get; set; } = 0.005;
+
+	[Property("Time Step"), DefaultPropertyValue(1.0)]
+    public double timeStep { get; set; } = 1.0;
     
     public void Consume(IDeviceReport value) {
         if (value is ITabletReport report) {
@@ -37,10 +40,9 @@ public class Probabilistic : IPositionedPipelineElement<IDeviceReport>
             Vector2 save = report.Position;
             double X = (double)report.Position.X;
             double Y = (double)report.Position.Y;
-            float FX = (float)axisX.Update(X, 1);
-            float FY = (float)axisY.Update(Y, 1);
+            float FX = (float)axisX.Update(X, timeStep);
+            float FY = (float)axisY.Update(Y, timeStep);
             report.Position = new Vector2(FX, FY);
-            Console.WriteLine(report.Position - save);
         }
         Emit.Invoke(value);
     }
@@ -67,7 +69,7 @@ internal sealed class ProbabilisticAxis
         Acceleration = acceleration;
     }
 
-    private double Measurement, Process, Acceleration, InitialVariance;
+    private double Measurement, Process, Acceleration;
 
 	private readonly List<State> _history = new List<State>();
 
